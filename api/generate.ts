@@ -1,7 +1,7 @@
 // Vercel Serverless Function: 调用即梦生成婚纱合成图
 // 路径：POST /api/generate
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { generate } from '../server/jimeng'
+import { generate } from '../server/jimeng.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {

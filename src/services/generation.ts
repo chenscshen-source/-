@@ -26,8 +26,8 @@ const stages = [
   '正在生成高清成片',
 ]
 
-/** 单模板预估耗时（秒）。2K + 2 张并发的 seedream 实测约 1 分钟。 */
-const PER_TEMPLATE_SECONDS = 60
+/** 单模板预估耗时（秒）。4K + 2 张并发的 seedream 实测约 1.5 分钟。 */
+const PER_TEMPLATE_SECONDS = 90
 
 async function generateOne(
   tpl: Template,

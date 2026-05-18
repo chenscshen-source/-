@@ -1,4 +1,0 @@
-# 后端代理到 Vercel（EdgeOne 边缘函数撑不住方舟 30-60s 长任务）
-/api/*  https://wedding-beryl-chi.vercel.app/api/:splat  200!
-# SPA fallback
-/*      /index.html  200

@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
  * 浏览器端压缩到 ~1280 长边 + JPEG q88，避免手机原图 4-6MB 触发 Vercel 4.5MB payload 上限。
  * 同时保持人脸细节足够（与后端 sharp 的 2048/q92 配合，整体保真度仍很高）。
  */
-async function compressToDataURL(file: File, maxDim = 1280, quality = 0.88): Promise<string> {
+async function compressToDataURL(file: File, maxDim = 1024, quality = 0.85): Promise<string> {
   const objURL = URL.createObjectURL(file)
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {
@@ -40,7 +40,11 @@ export default function FaceSlot({
     if (!f) return
     setBusy(true)
     try {
-      onChange(await compressToDataURL(f))
+      const dataUrl = await compressToDataURL(f)
+      console.log('[FaceSlot] compressed face: orig=%s KB → %s KB',
+        Math.round(f.size / 1024),
+        Math.round(dataUrl.length / 1024))
+      onChange(dataUrl)
     } catch (e) {
       console.error('[FaceSlot] compress failed, fallback to original', e)
       // 兜底：FileReader 直读 base64

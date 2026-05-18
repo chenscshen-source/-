@@ -35,16 +35,21 @@ async function generateOne(
   brideFace: string,
 ): Promise<string[]> {
   const abs = (u: string) => new URL(u, window.location.origin).toString()
+  const body = JSON.stringify({
+    prompt: tpl.prompt,
+    assists: (tpl.assists ?? []).map(abs),
+    groomFace,
+    brideFace,
+    n: 3,
+  })
+  console.log('[generate] body=%s KB (groom=%s KB, bride=%s KB)',
+    Math.round(body.length / 1024),
+    Math.round(groomFace.length / 1024),
+    Math.round(brideFace.length / 1024))
   const res = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      prompt: tpl.prompt,
-      assists: (tpl.assists ?? []).map(abs),
-      groomFace,
-      brideFace,
-      n: 3,
-    }),
+    body,
   })
   if (!res.ok) {
     const txt = await res.text().catch(() => '')

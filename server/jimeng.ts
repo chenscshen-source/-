@@ -13,7 +13,6 @@
 // =======================================================================
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import sharp from 'sharp'
 import { Agent, fetch as undiciFetch } from 'undici'
 
 // 本地代理软件（Clash/Surge/Charles）会做 TLS 拦截但证书未被信任，
@@ -48,46 +47,30 @@ const OPTIMIZE_MODE = process.env.JIMENG_OPTIMIZE_MODE ?? 'standard'
 const OUTPUT_FORMAT = process.env.JIMENG_OUTPUT_FORMAT ?? 'png'
 const ENDPOINT = `${API_BASE}/api/v3/images/generations`
 
-// 脸图（身份锁定用）：保留更多细节，2048 长边 + 高质量 JPEG
-const FACE_MAX_DIM = 2048
-const FACE_JPEG_Q = 92
-// 辅助图（场景/风格参考）：维持原档，省带宽
-const ASSIST_MAX_DIM = 1280
-const ASSIST_JPEG_Q = 82
-
-async function downscaleToDataUrl(buf: Buffer, maxDim: number, quality: number): Promise<string> {
-  const out = await sharp(buf, { failOn: 'none' })
-    .rotate()
-    .resize({ width: maxDim, height: maxDim, fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality, mozjpeg: true })
-    .toBuffer()
-  return `data:image/jpeg;base64,${out.toString('base64')}`
-}
-
-async function loadLocalBuffer(u: string): Promise<Buffer | null> {
+/**
+ * 把入参规整成 Ark 可消费的形式：
+ *  - data:URL 透传（前端已经在浏览器 canvas 里压到 1024/q85，~200-400KB）
+ *  - http(s) URL 透传（Ark 自己去拉）
+ *  - localhost / 文件协议 URL → 读本地文件 → 转 base64（仅 dev 环境）
+ *  生产环境不再做任何 sharp 压缩，避免 native binary 在 Vercel 上加载问题。
+ */
+async function toRef(u: string): Promise<string> {
+  if (!u) return u
+  if (u.startsWith('data:')) return u
   try {
     const url = new URL(u)
     if (url.hostname === 'localhost' || url.hostname === '127.0.0.1' || url.protocol === 'file:') {
       const filePath = path.join(process.cwd(), 'public', decodeURIComponent(url.pathname))
-      return await readFile(filePath)
+      const buf = await readFile(filePath)
+      // 用扩展名推断 MIME；不行就 image/jpeg 兜底
+      const ext = path.extname(filePath).toLowerCase().slice(1)
+      const mime = ext === 'png' ? 'image/png' :
+                   ext === 'webp' ? 'image/webp' :
+                   ext === 'gif' ? 'image/gif' :
+                   'image/jpeg'
+      return `data:${mime};base64,${buf.toString('base64')}`
     }
   } catch {/* fall through */}
-  return null
-}
-
-async function toRef(u: string, kind: 'face' | 'assist' = 'assist'): Promise<string> {
-  if (!u) return u
-  const maxDim = kind === 'face' ? FACE_MAX_DIM : ASSIST_MAX_DIM
-  const q = kind === 'face' ? FACE_JPEG_Q : ASSIST_JPEG_Q
-  if (u.startsWith('data:')) {
-    const m = /^data:([^;]+);base64,(.+)$/.exec(u)
-    if (m && m[2].length > 800_000) {
-      try { return await downscaleToDataUrl(Buffer.from(m[2], 'base64'), maxDim, q) } catch { return u }
-    }
-    return u
-  }
-  const buf = await loadLocalBuffer(u)
-  if (buf) return await downscaleToDataUrl(buf, maxDim, q)
   return u
 }
 
@@ -183,9 +166,9 @@ export async function generate(input: GenerateInput): Promise<GenerateOutput> {
   const bride = input.brideFace || ''
 
   // 脸图走高分辨率 (2048/q92)，辅助图走标准 (1280/q82)
-  const assistRefs = await Promise.all(assists.map(u => toRef(u, 'assist')))
-  const groomRef = groom ? await toRef(groom, 'face') : ''
-  const brideRef = bride ? await toRef(bride, 'face') : ''
+  const assistRefs = await Promise.all(assists.map(u => toRef(u)))
+  const groomRef = groom ? await toRef(groom) : ''
+  const brideRef = bride ? await toRef(bride) : ''
   const faces = [groomRef, brideRef].filter(Boolean) as string[]
 
   // 顺序：assists → 新郎 → 新娘

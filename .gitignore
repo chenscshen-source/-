@@ -1,0 +1,20 @@
+node_modules
+dist
+.DS_Store
+*.log
+.env
+.env.local
+
+# 生成图缓存
+public/cache/
+
+# 设计源材料（不用于运行时）
+web_templates/
+
+# 开发期截图 / 临时素材
+截屏*.png
+1f451909b8bee8dbeb93e9fe52340392.jpg
+c620b61183b35bb52995c113a78fecab.jpg
+
+# Claude Code 本地配置
+.claude/settings.local.json

@@ -1,0 +1,145 @@
+import type { Template } from '../types'
+import { PROMPTS } from './prompts'
+
+const img = (n: number) => `/templates/${n}.png`
+const p = (n: number) => PROMPTS[n]
+
+// 辅助参考图（来自 web_templates/辅助图/{n}/，仅参与生成、不展示）
+const ASSISTS: Record<number, string[]> = {
+  2: ['/assets/2/1.jpg', '/assets/2/2.jpg', '/assets/2/3.jpg'],
+  3: ['/assets/3/1.png'],
+  5: ['/assets/5/1.png'],
+  7: ['/assets/7/1.jpg', '/assets/7/2.png', '/assets/7/3.png'],
+  8: ['/assets/8/1.png'],
+  10: ['/assets/10/1.webp', '/assets/10/2.png'],
+  11: ['/assets/11/1.png', '/assets/11/2.png'],
+}
+const a = (n: number) => ASSISTS[n]
+
+export const templates: Template[] = [
+  {
+    id: 'tpl-01',
+    name: '光影厅堂',
+    styleEn: 'Quiet Light',
+    category: '西式',
+    cover: img(1),
+    description: '极简室内的一束斜光，新娘披长头纱与丝绸白裙，新郎着白衬衫黑领带，安静而克制。',
+    prompt: p(1),
+    sampleResults: [img(1), img(1), img(1)],
+    assists: a(1),
+  },
+  {
+    id: 'tpl-02',
+    name: '红礼花絮',
+    styleEn: 'Confetti Vow',
+    category: '西式',
+    cover: img(2),
+    description: '正红色背景的盛大瞬间，五彩纸屑漫天飞舞，新娘戴皇冠披头纱，新郎一身黑燕尾服。',
+    prompt: p(2),
+    sampleResults: [img(2), img(2), img(2)],
+    assists: a(2),
+  },
+  {
+    id: 'tpl-03',
+    name: '绅士之吻',
+    styleEn: 'Hand Kiss',
+    category: '西式',
+    cover: img(3),
+    description: '灰泥墙前的古典礼仪，新郎俯身亲吻新娘戴白手套的手背，象牙白塔夫绸礼服垂落。',
+    prompt: p(3),
+    sampleResults: [img(3), img(3), img(3)],
+    assists: a(3),
+  },
+  {
+    id: 'tpl-04',
+    name: '深蓝影楼',
+    styleEn: 'Indigo Studio',
+    category: '复古',
+    cover: img(4),
+    description: '宝蓝色丝绒影楼背景，新郎黑色礼服打蝶结，新娘怀抱满天星，雕花耳饰精致。',
+    prompt: p(4),
+    sampleResults: [img(4), img(4), img(4)],
+    assists: a(4),
+  },
+  {
+    id: 'tpl-05',
+    name: '旧梦红绸',
+    styleEn: 'Crimson Dream',
+    category: '中式',
+    cover: img(5),
+    description: '老厅堂的一束侧光，新娘一袭中式红礼裙配红披帛与红花头饰，新郎轻吻其侧颊。',
+    prompt: p(5),
+    sampleResults: [img(5), img(5), img(5)],
+    assists: a(5),
+  },
+  {
+    id: 'tpl-06',
+    name: '庭院丹影',
+    styleEn: 'Garden Pavilion',
+    category: '中式',
+    cover: img(6),
+    description: '白墙黛瓦花格窗，新娘红色礼服执团扇倚栏，新郎黑色西装立于其后，江南庭院。',
+    prompt: p(6),
+    sampleResults: [img(6), img(6), img(6)],
+    assists: a(6),
+  },
+  {
+    id: 'tpl-07',
+    name: '礁石之吻',
+    styleEn: 'Coastal Vow',
+    category: '旅拍',
+    cover: img(7),
+    description: '黑岩海岸边的拖尾婚纱，新人相拥亲吻，远方浪花翻涌，海风拂面。',
+    prompt: p(7),
+    sampleResults: [img(7), img(7), img(7)],
+    assists: a(7),
+  },
+  {
+    id: 'tpl-08',
+    name: '暮色双影',
+    styleEn: 'Dusk Reverie',
+    category: '旅拍',
+    cover: img(8),
+    description: '黄昏的天光最后一道蓝紫，新娘白色吊带礼服回望前方，新郎侧脸虚焦在前景。',
+    prompt: p(8),
+    sampleResults: [img(8), img(8), img(8)],
+    assists: a(8),
+  },
+  {
+    id: 'tpl-09',
+    name: '花园香槟',
+    styleEn: 'Garden Toast',
+    category: '西式',
+    cover: img(9),
+    description: '夏日花园的香槟时刻，新郎举杯佩胸花，新娘披长纱依偎，背景树影散景斑斓。',
+    prompt: p(9),
+    sampleResults: [img(9), img(9), img(9)],
+    assists: a(9),
+  },
+  {
+    id: 'tpl-10',
+    name: '逐光奔野',
+    styleEn: 'Run Wild',
+    category: '旅拍',
+    cover: img(10),
+    description: '阳光草坪上的奔跑瞬间，新娘戴墨镜执香槟，多层薄纱裙飞扬，新郎执花束随行。',
+    prompt: p(10),
+    sampleResults: [img(10), img(10), img(10)],
+    assists: a(10),
+  },
+  {
+    id: 'tpl-11',
+    name: '墨镜随影',
+    styleEn: 'Sunlit Selfie',
+    category: '复古',
+    cover: img(11),
+    description: '草坪上的自拍视角，戴墨镜的新郎占前景，新娘提花束回身一瞥，电影叙事感强烈。',
+    prompt: p(11),
+    sampleResults: [img(11), img(11), img(11)],
+    assists: a(11),
+  },
+]
+
+export const categories: Array<Template['category'] | '全部'> = ['全部', '中式', '西式', '旅拍', '复古']
+
+export const getTemplate = (id: string) => templates.find(t => t.id === id)

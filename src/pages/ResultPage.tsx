@@ -66,9 +66,6 @@ export default function ResultPage() {
                 <div key={i} className="result-card">
                   <img src={src} alt={`${group.template.name}-${i}`} />
                   <div className="actions">
-                    <button onClick={() => window.open(src, '_blank')}>
-                      查 看<span className="glyph">↗</span>
-                    </button>
                     <button onClick={() => download(src, `${group.template.id}-${i + 1}.jpg`)}>
                       下 载<span className="glyph">↓</span>
                     </button>

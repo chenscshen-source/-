@@ -7,7 +7,7 @@ const p = (n: number) => PROMPTS[n]
 // 辅助参考图（来自 web_templates/辅助图/{n}/，仅参与生成、不展示）
 const ASSISTS: Record<number, string[]> = {
   2: ['/assets/2/1.jpg', '/assets/2/2.jpg', '/assets/2/3.jpg'],
-  3: ['/assets/3/1.png'],
+  3: ['/assets/3/1.jpg', '/assets/3/2.jpg', '/assets/3/3.jpg'],
   5: ['/assets/5/1.png'],
   7: ['/assets/7/1.jpg', '/assets/7/2.png', '/assets/7/3.png'],
   8: ['/assets/8/1.png'],

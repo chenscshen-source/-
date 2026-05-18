@@ -54,7 +54,8 @@ function getApiKey(): string {
 }
 const API_BASE = process.env.JIMENG_BASE_URL ?? 'https://ark.cn-beijing.volces.com'
 const MODEL = process.env.JIMENG_MODEL ?? 'doubao-seedream-4-5-251128'
-const SIZE = process.env.JIMENG_SIZE ?? '4K'
+// 2K = 1760x2368（竖版）。4K 在 Vercel Hobby 60s 函数上限下并发 3 张容易超时。
+const SIZE = process.env.JIMENG_SIZE ?? '2K'
 const WATERMARK = (process.env.JIMENG_WATERMARK ?? 'false') === 'true'
 // Seedream 默认会"智能改写" prompt（mode=standard）。设为 'off' 时按用户原文严格执行，
 // 适合"参考图+精确指令"场景，避免模型为了画面好看而忽略身份特征。

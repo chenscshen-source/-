@@ -13,11 +13,27 @@
 // =======================================================================
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { Agent, fetch as undiciFetch } from 'undici'
 
-// 本地代理软件（Clash/Surge/Charles）会做 TLS 拦截但证书未被信任，
-// 默认 fetch 会在握手阶段 ECONNRESET。开发时绕过证书校验。
-const arkAgent = new Agent({ connect: { rejectUnauthorized: false } })
+// 本地代理软件（Clash/Surge/Charles）会做 TLS 拦截，dev 环境绕过证书校验；
+// Vercel 生产无 MITM，不需要也不要 require undici（避免模块加载风险）。
+// 这里通过 dynamic import 只在 dev 加载 undici。
+let _agent: any = undefined
+let _undiciFetch: any = undefined
+async function getDevAgent() {
+  if (_agent !== undefined) return _agent
+  if (process.env.NODE_ENV === 'production') {
+    _agent = null
+    return null
+  }
+  try {
+    const u = await import('undici')
+    _undiciFetch = u.fetch
+    _agent = new u.Agent({ connect: { rejectUnauthorized: false } })
+  } catch {
+    _agent = null
+  }
+  return _agent
+}
 
 export interface GenerateInput {
   prompt: string
@@ -105,19 +121,24 @@ async function callOnce(refs: string[], prompt: string): Promise<string> {
       /socket disconnected|socket hang up|terminated|other side closed/i.test(msg)
     )
   }
-  let res: Awaited<ReturnType<typeof undiciFetch>> | undefined
+  // dev：用 undici + 自定义 agent 绕过本地代理 MITM；prod：用 Node 内置 fetch
+  const devAgent = await getDevAgent()
+  const doFetch = (devAgent && _undiciFetch) ? _undiciFetch : globalThis.fetch
+  const extraOpts: any = devAgent ? { dispatcher: devAgent } : {}
+
+  let res: Response | undefined
   let lastErr: any
   const MAX_TRIES = 3
   for (let attempt = 1; attempt <= MAX_TRIES; attempt++) {
     try {
-      res = await undiciFetch(ENDPOINT, {
+      res = await doFetch(ENDPOINT, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getApiKey()}`,
           'Content-Type': 'application/json',
         },
         body: bodyStr,
-        dispatcher: arkAgent,
+        ...extraOpts,
       })
       break
     } catch (e: any) {

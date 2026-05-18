@@ -1,21 +1,55 @@
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 
-function readFileAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader()
-    r.onload = () => resolve(r.result as string)
-    r.onerror = reject
-    r.readAsDataURL(file)
-  })
+/**
+ * 浏览器端压缩到 ~1280 长边 + JPEG q88，避免手机原图 4-6MB 触发 Vercel 4.5MB payload 上限。
+ * 同时保持人脸细节足够（与后端 sharp 的 2048/q92 配合，整体保真度仍很高）。
+ */
+async function compressToDataURL(file: File, maxDim = 1280, quality = 0.88): Promise<string> {
+  const objURL = URL.createObjectURL(file)
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image()
+      i.onload = () => resolve(i)
+      i.onerror = reject
+      i.src = objURL
+    })
+    let { width, height } = img
+    const long = Math.max(width, height)
+    if (long > maxDim) {
+      const ratio = maxDim / long
+      width = Math.round(width * ratio)
+      height = Math.round(height * ratio)
+    }
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const ctx = canvas.getContext('2d')!
+    ctx.drawImage(img, 0, 0, width, height)
+    return canvas.toDataURL('image/jpeg', quality)
+  } finally {
+    URL.revokeObjectURL(objURL)
+  }
 }
 
 export default function FaceSlot({
   label, value, onChange, size = 132,
 }: { label: string; value: string | null; onChange: (d: string | null) => void; size?: number }) {
   const ref = useRef<HTMLInputElement>(null)
+  const [busy, setBusy] = useState(false)
   const onFile = async (f: File | undefined) => {
     if (!f) return
-    onChange(await readFileAsDataURL(f))
+    setBusy(true)
+    try {
+      onChange(await compressToDataURL(f))
+    } catch (e) {
+      console.error('[FaceSlot] compress failed, fallback to original', e)
+      // 兜底：FileReader 直读 base64
+      const r = new FileReader()
+      r.onload = () => onChange(r.result as string)
+      r.readAsDataURL(f)
+    } finally {
+      setBusy(false)
+    }
   }
   return (
     <div className="face-slot">
@@ -26,6 +60,7 @@ export default function FaceSlot({
       >
         {value ? <img src={value} alt={label} /> : <span className="plus">+</span>}
         {value && <div className="replace">更换</div>}
+        {busy && <div className="replace" style={{ opacity: 1 }}>处理中…</div>}
         <input
           ref={ref} type="file" accept="image/*" hidden
           onChange={(e) => onFile(e.target.files?.[0])}

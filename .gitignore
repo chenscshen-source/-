@@ -10,6 +10,7 @@ public/cache/
 
 # 设计源材料（不用于运行时）
 web_templates/
+public/templates_orig/
 
 # 开发期截图 / 临时素材
 截屏*.png

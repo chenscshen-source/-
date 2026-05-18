@@ -1,7 +1,7 @@
 import type { Template } from '../types'
 import { PROMPTS } from './prompts'
 
-const img = (n: number) => `/templates/${n}.png`
+const img = (n: number) => `/templates/${n}.jpg`
 const p = (n: number) => PROMPTS[n]
 
 // 辅助参考图（来自 web_templates/辅助图/{n}/，仅参与生成、不展示）

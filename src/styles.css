@@ -305,6 +305,13 @@ button { font-family: inherit; cursor: pointer; }
 .tpl-card.selected {
   border-color: var(--gold);
 }
+.tpl-card.disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
+.tpl-card.disabled:hover .cover img { transform: none; filter: saturate(.92); }
+.tpl-card.disabled .pick { display: none; }
 .tpl-card .check {
   position: absolute; top: 12px; right: 12px; z-index: 2;
   width: 24px; height: 24px; border-radius: 50%;

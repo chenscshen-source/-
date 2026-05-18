@@ -26,8 +26,8 @@ const stages = [
   '正在生成高清成片',
 ]
 
-/** 单模板预估耗时（秒）。4K + 3 张并发的 seedream 实测在 2-3 分钟。 */
-const PER_TEMPLATE_SECONDS = 180
+/** 单模板预估耗时（秒）。2K + 2 张并发的 seedream 实测约 1 分钟。 */
+const PER_TEMPLATE_SECONDS = 60
 
 async function generateOne(
   tpl: Template,
@@ -40,7 +40,7 @@ async function generateOne(
     assists: (tpl.assists ?? []).map(abs),
     groomFace,
     brideFace,
-    n: 3,
+    n: 2,
   })
   console.log('[generate] body=%s KB (groom=%s KB, bride=%s KB)',
     Math.round(body.length / 1024),

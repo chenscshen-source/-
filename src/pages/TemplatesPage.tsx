@@ -2,17 +2,25 @@ import { useState } from 'react'
 import TopBar from '../components/TopBar'
 import UploadPanel from '../components/UploadPanel'
 import { templates, categories } from '../data/templates'
-import { useFlow } from '../store'
+import { useFlow, MAX_TEMPLATES } from '../store'
 import type { Template } from '../types'
 
 export default function TemplatesPage() {
   const [filter, setFilter] = useState<(typeof categories)[number]>('全部')
   const { selected, toggleTemplate } = useFlow()
   const isSelected = (id: string) => selected.some(t => t.id === id)
+  const atLimit = selected.length >= MAX_TEMPLATES
 
   const list = filter === '全部' ? templates : templates.filter(t => t.category === filter)
 
-  const pick = (t: Template) => toggleTemplate(t)
+  const pick = (t: Template) => {
+    // 已选满且这张不是已选的 → 提示一下
+    if (atLimit && !isSelected(t.id)) {
+      alert(`最多选 ${MAX_TEMPLATES} 个模板`)
+      return
+    }
+    toggleTemplate(t)
+  }
 
   return (
     <>
@@ -70,7 +78,7 @@ export default function TemplatesPage() {
               return (
                 <div
                   key={t.id}
-                  className={`tpl-card ${on ? 'selected' : ''}`}
+                  className={`tpl-card ${on ? 'selected' : ''} ${atLimit && !on ? 'disabled' : ''}`}
                   onClick={() => pick(t)}
                 >
                   <div className="badge">{t.category}</div>

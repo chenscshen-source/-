@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { useFlow } from '../store'
+import { useFlow, MAX_TEMPLATES } from '../store'
 import { generateBatch, estimateTotalSeconds, type BatchProgress } from '../services/generation'
 
 /** 把秒数格式化成"约 X 分 Y 秒"；为减少跳动，5 秒一档对齐 */
@@ -64,7 +64,7 @@ export default function UploadPanel() {
       <div className="selected-list">
         <div className="selected-head">
           <span>已选模板</span>
-          <span className="selected-count">{selected.length}</span>
+          <span className="selected-count">{selected.length} / {MAX_TEMPLATES}</span>
           {hasTpl && (
             <button className="clear-btn" onClick={clearTemplates}>清空</button>
           )}
@@ -97,7 +97,7 @@ export default function UploadPanel() {
       <p className="side-hint">
         {!hasTpl ? '挑选至少一个模板' :
           !groomFace || !brideFace ? '上传两张正脸照即可生成' :
-          `预计 ${formatTotalEstimate(estimateTotalSeconds(selected.length))}，每个模板出 3 张`}
+          `预计 ${formatTotalEstimate(estimateTotalSeconds(selected.length))}，每个模板出 2 张`}
       </p>
 
       {loading && progress && createPortal(

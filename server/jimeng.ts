@@ -141,7 +141,7 @@ export async function generate(input: GenerateInput, env?: GenerateEnv): Promise
   if (!apiKey) throw new Error('Missing JIMENG_API_KEY')
   const apiBase = readEnv(env, 'JIMENG_BASE_URL') ?? 'https://ark.cn-beijing.volces.com'
   const model = readEnv(env, 'JIMENG_MODEL') ?? 'doubao-seedream-4-5-251128'
-  const size = readEnv(env, 'JIMENG_SIZE') ?? '2K'
+  const size = readEnv(env, 'JIMENG_SIZE') ?? '4K'
   const watermark = (readEnv(env, 'JIMENG_WATERMARK') ?? 'false') === 'true'
   const optimizeMode = readEnv(env, 'JIMENG_OPTIMIZE_MODE') ?? 'standard'
   const outputFormat = readEnv(env, 'JIMENG_OUTPUT_FORMAT') ?? 'png'

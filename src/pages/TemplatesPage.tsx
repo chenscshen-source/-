@@ -1,15 +1,24 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import TopBar from '../components/TopBar'
 import UploadPanel from '../components/UploadPanel'
-import { templates, categories } from '../data/templates'
+import { categories } from '../data/templates'
+import { fetchTemplates } from '../services/templatesApi'
 import { useFlow, MAX_TEMPLATES } from '../store'
 import type { Template } from '../types'
 
 export default function TemplatesPage() {
   const [filter, setFilter] = useState<(typeof categories)[number]>('全部')
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loading, setLoading] = useState(true)
   const { selected, toggleTemplate } = useFlow()
   const isSelected = (id: string) => selected.some(t => t.id === id)
   const atLimit = selected.length >= MAX_TEMPLATES
+
+  useEffect(() => {
+    fetchTemplates()
+      .then(t => { setTemplates(t); setLoading(false) })
+      .catch(e => { console.error('[templates load]', e); setLoading(false) })
+  }, [])
 
   const list = filter === '全部' ? templates : templates.filter(t => t.category === filter)
 
@@ -72,6 +81,11 @@ export default function TemplatesPage() {
 
       <div className="layout">
         <main className="layout-main">
+          {loading && (
+            <div style={{ padding: 80, textAlign: 'center', color: 'var(--ink-soft)' }}>
+              正在加载模板…
+            </div>
+          )}
           <div className="tpl-grid">
             {list.map(t => {
               const on = isSelected(t.id)

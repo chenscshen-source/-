@@ -58,8 +58,8 @@ export default function AdminSettingsPage() {
   const preview = !form.prefix_enabled
     ? '（已关闭，前端会原样使用模板 prompt，不加任何前缀）'
     : '【参考图角色说明】\n' +
-      form.scene_block.replaceAll('{ASSIST_RANGE}', '第1~3张') + '\n' +
-      form.face_block.replaceAll('{FACE_PARTS}', '第4张为新郎本人面部参考；第5张为新娘本人面部参考') + '\n' +
+      form.scene_block.replace(/\{ASSIST_RANGE\}/g, '第1~3张') + '\n' +
+      form.face_block.replace(/\{FACE_PARTS\}/g, '第4张为新郎本人面部参考；第5张为新娘本人面部参考') + '\n' +
       form.priority_block + '\n'
 
   return (

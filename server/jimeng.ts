@@ -59,9 +59,9 @@ async function buildIdentityPrefix(groomIdx: number, brideIdx: number): Promise<
   const assistRange = groomIdx === 1 ? '第1张' : groomIdx > 1 ? `第1~${groomIdx}张` : ''
 
   const sceneBlock = hasAssists && settings.scene_block
-    ? settings.scene_block.replaceAll('{ASSIST_RANGE}', assistRange) + '\n'
+    ? settings.scene_block.replace(/\{ASSIST_RANGE\}/g, assistRange) + '\n'
     : ''
-  const faceBlock = settings.face_block.replaceAll('{FACE_PARTS}', faceParts.join('；')) + '\n'
+  const faceBlock = settings.face_block.replace(/\{FACE_PARTS\}/g, faceParts.join('；')) + '\n'
   const priorityBlock = hasAssists && settings.priority_block ? settings.priority_block + '\n' : ''
 
   return `【参考图角色说明】\n${sceneBlock}${faceBlock}${priorityBlock}\n`

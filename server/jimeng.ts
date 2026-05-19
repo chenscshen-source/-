@@ -37,16 +37,34 @@ function readEnv(env: GenerateEnv | undefined, key: keyof GenerateEnv): string |
   return undefined
 }
 
-// 身份锁定前缀：告诉模型参考图里哪张是新郎、哪张是新娘，强制五官一致
+/**
+ * 参考图角色说明 + 优先级前缀。
+ * 把 assists 提升为"强约束"，避免模型"自由发挥"成通用广告片。
+ */
 function buildIdentityPrefix(groomIdx: number, brideIdx: number): string {
-  const parts: string[] = []
-  if (groomIdx >= 0) parts.push(`第${groomIdx + 1}张参考图为新郎本人`)
-  if (brideIdx >= 0) parts.push(`第${brideIdx + 1}张参考图为新娘本人`)
-  if (!parts.length) return ''
+  const faceParts: string[] = []
+  if (groomIdx >= 0) faceParts.push(`第${groomIdx + 1}张为新郎本人面部参考`)
+  if (brideIdx >= 0) faceParts.push(`第${brideIdx + 1}张为新娘本人面部参考`)
+  if (!faceParts.length) return ''
+
+  // 第 1 张到第 groomIdx 张是 assists（如果有的话）
+  const hasAssists = groomIdx > 0
+  const assistRange = groomIdx === 1 ? '第1张' : groomIdx > 1 ? `第1~${groomIdx}张` : ''
+
+  const sceneBlock = hasAssists
+    ? `【场景视觉参考】${assistRange}图片提供本次拍摄的核心视觉模板 —— 必须严格延续：` +
+      `服饰款式与材质、姿势与互动动作、背景质感与纹理、光影方向与对比、整体色调与饱和度、` +
+      `画面构图与人物在画面中的位置。不要自由发挥成通用婚纱广告片，必须复现参考图的真实拍摄感。\n`
+    : ''
+
   return (
-    `【身份锁定 - 最高优先级】${parts.join('，')}。` +
-    `最终成图中新郎与新娘的五官、脸型、眉眼、鼻型、嘴型、肤色必须与参考图中的本人严格一致，` +
-    `禁止改变身份特征；其余参考图仅作为场景与风格参考。\n\n`
+    `【参考图角色说明】\n` +
+    sceneBlock +
+    `【人脸最高优先级】${faceParts.join('；')}。新郎、新娘的脸必须严格还原这两张图里的真人 —— ` +
+    `五官、脸型、眉形、眼距、鼻型、嘴型、肤色、年龄感全部保留，禁止美颜/磨皮/瘦脸/换脸/网红化。\n` +
+    (hasAssists
+      ? `【优先级排序】人脸还原 > 场景视觉延续 > prompt 文字描述。\n\n`
+      : `\n`)
   )
 }
 

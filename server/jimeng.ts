@@ -9,6 +9,8 @@
 // 同时兼容：Node.js (Vercel Function / Vite dev) 与 V8 isolate (EdgeOne Pages Functions)。
 // =======================================================================
 
+import { getPrefixSettings } from './settingsRepo.js'
+
 export interface GenerateInput {
   prompt: string
   assists?: string[]
@@ -39,33 +41,30 @@ function readEnv(env: GenerateEnv | undefined, key: keyof GenerateEnv): string |
 
 /**
  * 参考图角色说明 + 优先级前缀。
- * 把 assists 提升为"强约束"，避免模型"自由发挥"成通用广告片。
+ * 模板内容来自 settings 表，运营可在 /admin/settings 实时编辑。
+ * 支持的占位符：
+ *   {ASSIST_RANGE}  → "第1~3张" 或 "第1张"（无 assists 时本块整体省略）
+ *   {FACE_PARTS}    → "第4张为新郎本人面部参考；第5张为新娘本人面部参考"
  */
-function buildIdentityPrefix(groomIdx: number, brideIdx: number): string {
+async function buildIdentityPrefix(groomIdx: number, brideIdx: number): Promise<string> {
+  const settings = await getPrefixSettings()
+  if (!settings.prefix_enabled) return ''
+
   const faceParts: string[] = []
   if (groomIdx >= 0) faceParts.push(`第${groomIdx + 1}张为新郎本人面部参考`)
   if (brideIdx >= 0) faceParts.push(`第${brideIdx + 1}张为新娘本人面部参考`)
   if (!faceParts.length) return ''
 
-  // 第 1 张到第 groomIdx 张是 assists（如果有的话）
   const hasAssists = groomIdx > 0
   const assistRange = groomIdx === 1 ? '第1张' : groomIdx > 1 ? `第1~${groomIdx}张` : ''
 
-  const sceneBlock = hasAssists
-    ? `【场景视觉参考】${assistRange}图片提供本次拍摄的核心视觉模板 —— 必须严格延续：` +
-      `服饰款式与材质、姿势与互动动作、背景质感与纹理、光影方向与对比、整体色调与饱和度、` +
-      `画面构图与人物在画面中的位置。不要自由发挥成通用婚纱广告片，必须复现参考图的真实拍摄感。\n`
+  const sceneBlock = hasAssists && settings.scene_block
+    ? settings.scene_block.replaceAll('{ASSIST_RANGE}', assistRange) + '\n'
     : ''
+  const faceBlock = settings.face_block.replaceAll('{FACE_PARTS}', faceParts.join('；')) + '\n'
+  const priorityBlock = hasAssists && settings.priority_block ? settings.priority_block + '\n' : ''
 
-  return (
-    `【参考图角色说明】\n` +
-    sceneBlock +
-    `【人脸最高优先级】${faceParts.join('；')}。新郎、新娘的脸必须严格还原这两张图里的真人 —— ` +
-    `五官、脸型、眉形、眼距、鼻型、嘴型、肤色、年龄感全部保留，禁止美颜/磨皮/瘦脸/换脸/网红化。\n` +
-    (hasAssists
-      ? `【优先级排序】人脸还原 > 场景视觉延续 > prompt 文字描述。\n\n`
-      : `\n`)
-  )
+  return `【参考图角色说明】\n${sceneBlock}${faceBlock}${priorityBlock}\n`
 }
 
 async function callOnce(args: {
@@ -172,7 +171,7 @@ export async function generate(input: GenerateInput, env?: GenerateEnv): Promise
   const refs = [...assists.map(toRef), ...(groom ? [toRef(groom)] : []), ...(bride ? [toRef(bride)] : [])]
   const groomIdx = groom ? assists.length : -1
   const brideIdx = bride ? assists.length + (groom ? 1 : 0) : -1
-  const prompt = buildIdentityPrefix(groomIdx, brideIdx) + input.prompt
+  const prompt = (await buildIdentityPrefix(groomIdx, brideIdx)) + input.prompt
 
   const n = input.n ?? 2
 

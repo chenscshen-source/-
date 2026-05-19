@@ -72,6 +72,7 @@ export default function AdminListPage() {
         </div>
         <div className="admin-actions">
           <Link to="/templates" className="admin-link">← 返回前台</Link>
+          <Link to="/admin/settings" className="admin-link">Prompt 前缀设置</Link>
           <button className="admin-btn" onClick={() => navigate('/admin/templates/new')}>+ 新建模板</button>
         </div>
       </header>

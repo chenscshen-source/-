@@ -34,9 +34,11 @@ export interface GenerateEnv {
 }
 
 function readEnv(env: GenerateEnv | undefined, key: keyof GenerateEnv): string | undefined {
-  if (env && env[key] !== undefined) return env[key]
-  if (typeof process !== 'undefined' && process.env) return (process.env as any)[key]
-  return undefined
+  const fromArg = env?.[key]
+  const fromProc = (typeof process !== 'undefined' && process.env) ? (process.env as any)[key] : undefined
+  const v = fromArg ?? fromProc
+  // 空字符串视为未设置，让 ?? 默认值生效（避免 Vercel 后台填空 value 触发奇怪行为）
+  return v === '' ? undefined : v
 }
 
 /**

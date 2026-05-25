@@ -2,7 +2,8 @@
 // 路径：POST /api/generate
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { generate } from '../server/jimeng.js'
-import { requireInvite } from '../server/inviteAuth.js'
+import { getInviteSessionToken, requireInvite } from '../server/inviteAuth.js'
+import { consumeInviteUsageBySession, isInviteRequired } from '../server/inviteRepo.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -12,6 +13,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const ok = await requireInvite(req, res)
     if (!ok) return
+    const required = await isInviteRequired()
+    if (required) {
+      const token = getInviteSessionToken(req)
+      if (!token) {
+        res.status(401).json({ error: 'INVITE_REQUIRED' })
+        return
+      }
+      const consumed = await consumeInviteUsageBySession(token)
+      if (consumed === 'invalid') {
+        res.status(401).json({ error: 'INVITE_REQUIRED' })
+        return
+      }
+      if (consumed === 'exhausted') {
+        res.status(403).json({ error: '邀请码次数已用完，请联系管理员获取新邀请码' })
+        return
+      }
+    }
     // Vercel 已自动解析 JSON body
     const input = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
     const out = await generate(input)

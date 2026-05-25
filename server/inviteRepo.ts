@@ -95,13 +95,10 @@ export async function verifyInviteCodeAndCreateSession(code: string): Promise<{ 
   if (!row) return null
   const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '')
   const expiresAt = new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString()
-  await s.begin(async tx => {
-    await tx`update invite_codes set used_count = used_count + 1 where id = ${row.id}`
-    await tx`
-      insert into invite_sessions (token, invite_code_id, code, expires_at)
-      values (${token}, ${row.id}, ${row.code}, ${expiresAt})
-    `
-  })
+  await s`
+    insert into invite_sessions (token, invite_code_id, code, expires_at)
+    values (${token}, ${row.id}, ${row.code}, ${expiresAt})
+  `
   return { token, expiresAt }
 }
 
@@ -115,4 +112,41 @@ export async function isInviteSessionValid(token: string): Promise<boolean> {
     limit 1
   `
   return !!rows[0]?.ok
+}
+
+export async function consumeInviteUsageBySession(token: string): Promise<'ok' | 'invalid' | 'exhausted'> {
+  const s = sql()
+  try {
+    const result = await s.begin(async tx => {
+      const rows = await tx<{
+        invite_id: string
+        enabled: boolean
+        expires_at: string | null
+        used_count: number
+        max_uses: number
+      }[]>`
+        select
+          c.id as invite_id,
+          c.enabled,
+          c.expires_at,
+          c.used_count,
+          c.max_uses
+        from invite_sessions s
+        join invite_codes c on c.id = s.invite_code_id
+        where s.token = ${token}
+          and s.expires_at > now()
+        limit 1
+        for update of c
+      `
+      const row = rows[0]
+      if (!row) return 'invalid' as const
+      const expired = row.expires_at ? new Date(row.expires_at).getTime() <= Date.now() : false
+      if (!row.enabled || expired || row.used_count >= row.max_uses) return 'exhausted' as const
+      await tx`update invite_codes set used_count = used_count + 1 where id = ${row.invite_id}`
+      return 'ok' as const
+    })
+    return result
+  } catch {
+    return 'invalid'
+  }
 }

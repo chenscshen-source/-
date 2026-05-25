@@ -15,10 +15,14 @@ function getCookie(req: VercelRequest, name: string): string | null {
   return null
 }
 
+export function getInviteSessionToken(req: VercelRequest): string | null {
+  return getCookie(req, 'invite_session')
+}
+
 export async function requireInvite(req: VercelRequest, res: VercelResponse): Promise<boolean> {
   const required = await isInviteRequired()
   if (!required) return true
-  const token = getCookie(req, 'invite_session')
+  const token = getInviteSessionToken(req)
   if (!token) {
     res.status(401).json({ error: 'INVITE_REQUIRED' })
     return false

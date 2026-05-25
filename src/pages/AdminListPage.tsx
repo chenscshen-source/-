@@ -116,7 +116,7 @@ function classifyBucket(folderName: string): 'cover' | 'prompt' | 'assist' | nul
 function buildFolderTemplates(files: File[]): FolderTemplateItem[] {
   const grouped = new Map<string, FolderTemplateItem>()
   for (const file of files) {
-    const rel = (file as any).webkitRelativePath as string | undefined
+    const rel = ((file as any).webkitRelativePath || (file as any).__relPath) as string | undefined
     if (!rel) continue
     const parts = rel.split('/').filter(Boolean)
     if (parts.length < 3) continue
@@ -140,6 +140,50 @@ function buildFolderTemplates(files: File[]): FolderTemplateItem[] {
   return Array.from(grouped.values()).filter(item => item.coverFile)
 }
 
+function readEntry(entry: any, parentPath: string): Promise<File[]> {
+  return new Promise((resolve) => {
+    if (entry.isFile) {
+      entry.file((file: File) => {
+        const relPath = `${parentPath}${file.name}`
+        Object.defineProperty(file, '__relPath', { value: relPath, configurable: true })
+        resolve([file])
+      }, () => resolve([]))
+      return
+    }
+    if (entry.isDirectory) {
+      const reader = entry.createReader()
+      const readAll = async (): Promise<any[]> => {
+        const out: any[] = []
+        while (true) {
+          const chunk = await new Promise<any[]>((res) => reader.readEntries(res, () => res([])))
+          if (!chunk.length) break
+          out.push(...chunk)
+        }
+        return out
+      }
+      readAll()
+        .then(async (entries) => {
+          const children = await Promise.all(entries.map((child) => readEntry(child, `${parentPath}${entry.name}/`)))
+          resolve(children.flat())
+        })
+        .catch(() => resolve([]))
+      return
+    }
+    resolve([])
+  })
+}
+
+async function readDroppedFolders(event: React.DragEvent<HTMLDivElement>): Promise<File[]> {
+  const items = Array.from(event.dataTransfer.items || [])
+  const entries = items
+    .map((it) => (it as any).webkitGetAsEntry?.())
+    .filter(Boolean)
+    .filter((entry: any) => entry.isDirectory)
+  if (!entries.length) return []
+  const groups = await Promise.all(entries.map((entry: any) => readEntry(entry, '')))
+  return groups.flat()
+}
+
 export default function AdminListPage() {
   const [rows, setRows] = useState<AdminRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -149,6 +193,7 @@ export default function AdminListPage() {
   const [batchUploading, setBatchUploading] = useState(false)
   const [batchDone, setBatchDone] = useState(0)
   const [batchTotal, setBatchTotal] = useState(0)
+  const [dragActive, setDragActive] = useState(false)
   const navigate = useNavigate()
 
   const load = async () => {
@@ -258,6 +303,19 @@ export default function AdminListPage() {
     }
   }
 
+  const onDropFolders = async (event: React.DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setDragActive(false)
+    if (batchUploading) return
+    const files = await readDroppedFolders(event)
+    if (!files.length) {
+      alert('请拖入一个或多个模板文件夹（每个文件夹需包含 模版/提示词/参考图）')
+      return
+    }
+    setBatchFiles(files)
+    setBatchItems(buildFolderTemplates(files))
+  }
+
   return (
     <div className="admin-wrap">
       <header className="admin-head">
@@ -284,11 +342,19 @@ export default function AdminListPage() {
       <section className="admin-section admin-batch">
         <h3 className="admin-section-title">批量上传模板</h3>
         <p className="admin-hint">
-          请选择包含多个模板文件夹的目录。每个模板文件夹需包含 3 个子文件夹：<code>模版</code>、<code>提示词</code>、<code>参考图</code>。系统会自动识别并创建新模板。
+          支持一次上传多个模板文件夹。每个模板文件夹需包含 3 个子文件夹：<code>模版</code>、<code>提示词</code>、<code>参考图</code>。
         </p>
+        <div
+          className={`admin-dropzone${dragActive ? ' admin-dropzone--active' : ''}`}
+          onDragOver={e => { e.preventDefault(); setDragActive(true) }}
+          onDragLeave={() => setDragActive(false)}
+          onDrop={onDropFolders}
+        >
+          把多个模板文件夹直接拖到这里
+        </div>
         <div className="admin-batch-actions">
           <label className="admin-btn admin-btn--ghost">
-            选择模板目录
+            选择父目录（备选）
             <input
               type="file"
               multiple

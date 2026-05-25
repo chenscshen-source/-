@@ -1150,6 +1150,25 @@ button { font-family: inherit; cursor: pointer; }
   border-radius: 4px; padding: 24px 28px;
 }
 .admin-batch { margin-bottom: 24px; }
+.admin-dropzone {
+  margin-top: 8px;
+  border: 1px dashed var(--gold);
+  border-radius: 4px;
+  min-height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  background: rgba(184,152,90,0.03);
+  transition: border-color .2s, background .2s, color .2s;
+}
+.admin-dropzone--active {
+  border-color: var(--gold-deep);
+  background: rgba(184,152,90,0.08);
+  color: var(--ink);
+}
 .admin-batch-actions {
   margin-top: 14px;
   display: flex;

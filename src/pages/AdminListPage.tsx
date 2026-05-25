@@ -102,7 +102,7 @@ function isImageFile(name: string): boolean {
 }
 
 function isPromptFile(name: string): boolean {
-  return /\.(txt|md|markdown|json|text)$/i.test(name)
+  return /\.(txt|md|markdown|json|text|doc|docx)$/i.test(name)
 }
 
 function classifyBucket(folderName: string): 'cover' | 'prompt' | 'assist' | null {
@@ -111,6 +111,19 @@ function classifyBucket(folderName: string): 'cover' | 'prompt' | 'assist' | nul
   if (n.includes('提示词') || n.includes('prompt')) return 'prompt'
   if (n.includes('参考图') || n.includes('参考') || n.includes('assist')) return 'assist'
   return null
+}
+
+function fallbackPrompt(title: string, category: string): string {
+  return `婚纱摄影风格片，主题「${title}」，分类「${category}」。保留人物五官与面部特征一致，服饰与场景风格统一，构图自然，光影细腻，画质清晰，整体高级简约。`
+}
+
+async function readPromptContent(file: File | null): Promise<string> {
+  if (!file) return ''
+  if (/\.(txt|md|markdown|json|text)$/i.test(file.name)) {
+    return (await file.text()).trim()
+  }
+  // doc/docx 当前不做结构化解析，避免读取到二进制乱码
+  return ''
 }
 
 function buildFolderTemplates(files: File[]): FolderTemplateItem[] {
@@ -265,7 +278,8 @@ export default function AdminListPage() {
             assistUrls.push({ url: assistUrl })
           }
           const safeSlug = `${slugifyFilename(item.folderName)}-${(stamp + i).toString(36)}`
-          const prompt = item.promptFile ? (await item.promptFile.text()).trim() : ''
+          const promptRaw = await readPromptContent(item.promptFile)
+          const prompt = promptRaw || fallbackPrompt(title, category)
           const payload = {
             slug: safeSlug,
             name: title,
@@ -343,6 +357,8 @@ export default function AdminListPage() {
         <h3 className="admin-section-title">批量上传模板</h3>
         <p className="admin-hint">
           支持一次上传多个模板文件夹。每个模板文件夹需包含 3 个子文件夹：<code>模版</code>、<code>提示词</code>、<code>参考图</code>。
+          <br />
+          提示词建议放 <code>.txt / .md / .json</code> 文本文件；若为空或无法识别，系统会自动生成兜底提示词。
         </p>
         <div
           className={`admin-dropzone${dragActive ? ' admin-dropzone--active' : ''}`}

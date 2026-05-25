@@ -19,20 +19,31 @@ export default function AdminInvitesPage() {
   const [maxUses, setMaxUses] = useState(20)
   const [expiresAt, setExpiresAt] = useState('')
   const [note, setNote] = useState('')
+  const [msg, setMsg] = useState('')
+  const [err, setErr] = useState('')
 
   const load = async () => {
     setLoading(true)
-    const r = await fetch('/api/admin/invites')
-    const j = await r.json()
-    setRows(j.invites ?? [])
-    setRequired(!!j.required)
-    setLoading(false)
+    setErr('')
+    try {
+      const r = await fetch('/api/admin/invites')
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
+      setRows(j.invites ?? [])
+      setRequired(!!j.required)
+    } catch (e: any) {
+      setErr(`加载失败：${String(e?.message ?? e)}。请先访问 /api/admin/init 初始化数据库后重试。`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
 
   const createOne = async () => {
     if (!code.trim()) return
+    setMsg('')
+    setErr('')
     const r = await fetch('/api/admin/invites', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -44,23 +55,28 @@ export default function AdminInvitesPage() {
       }),
     })
     if (!r.ok) {
-      alert('创建失败：' + await r.text())
+      const text = await r.text()
+      setErr(`创建失败：${text}`)
       return
     }
     setCode('')
     setNote('')
     setExpiresAt('')
     setMaxUses(20)
+    setMsg('邀请码已创建')
     await load()
   }
 
   const toggleRequired = async (next: boolean) => {
     setRequired(next)
+    setMsg('')
+    setErr('')
     await fetch('/api/admin/invites', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ required: next }),
     })
+    setMsg(next ? '已开启邀请码模式' : '已关闭邀请码模式')
   }
 
   const toggleEnabled = async (row: InviteRow) => {
@@ -89,6 +105,8 @@ export default function AdminInvitesPage() {
           <Link to="/admin" className="admin-link">← 返回列表</Link>
         </div>
       </header>
+      {!!msg && <div className="admin-empty" style={{ padding: '12px 16px', marginBottom: 12 }}>{msg}</div>}
+      {!!err && <div className="admin-empty admin-empty--err" style={{ padding: '12px 16px', marginBottom: 12 }}>{err}</div>}
 
       <section className="admin-section">
         <h3 className="admin-section-title">测试入口控制</h3>

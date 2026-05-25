@@ -6,6 +6,7 @@ import ResultPage from './pages/ResultPage'
 import AdminListPage from './pages/AdminListPage'
 import AdminEditPage from './pages/AdminEditPage'
 import AdminSettingsPage from './pages/AdminSettingsPage'
+import AdminInvitesPage from './pages/AdminInvitesPage'
 import './styles.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -18,6 +19,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         <Route path="/result" element={<ResultPage />} />
         <Route path="/admin" element={<AdminListPage />} />
         <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/invites" element={<AdminInvitesPage />} />
         <Route path="/admin/templates/new" element={<AdminEditPage />} />
         <Route path="/admin/templates/:id" element={<AdminEditPage />} />
       </Routes>

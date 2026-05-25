@@ -1,10 +1,10 @@
 import { useRef, useState } from 'react'
 
 /**
- * 浏览器端压缩到 ~1280 长边 + JPEG q88，避免手机原图 4-6MB 触发 Vercel 4.5MB payload 上限。
- * 同时保持人脸细节足够（与后端 sharp 的 2048/q92 配合，整体保真度仍很高）。
+ * 浏览器端轻压缩：提高到 1600 长边 + JPEG q90，优先保留面部细节，
+ * 同时尽量避免触发 Vercel 4.5MB payload 上限。
  */
-async function compressToDataURL(file: File, maxDim = 1024, quality = 0.85): Promise<string> {
+async function compressToDataURL(file: File, maxDim = 1600, quality = 0.9): Promise<string> {
   const objURL = URL.createObjectURL(file)
   try {
     const img = await new Promise<HTMLImageElement>((resolve, reject) => {

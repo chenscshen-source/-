@@ -10,15 +10,52 @@ export default function TemplatesPage() {
   const [filter, setFilter] = useState<(typeof categories)[number]>('全部')
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
+  const [inviteChecked, setInviteChecked] = useState(false)
+  const [inviteRequired, setInviteRequired] = useState(true)
+  const [inviteVerified, setInviteVerified] = useState(false)
+  const [inviteCode, setInviteCode] = useState('')
+  const [inviteBusy, setInviteBusy] = useState(false)
+  const [inviteError, setInviteError] = useState('')
   const { selected, toggleTemplate } = useFlow()
   const isSelected = (id: string) => selected.some(t => t.id === id)
   const atLimit = selected.length >= MAX_TEMPLATES
 
   useEffect(() => {
-    fetchTemplates()
-      .then(t => { setTemplates(t); setLoading(false) })
-      .catch(e => { console.error('[templates load]', e); setLoading(false) })
+    fetch('/api/invite/status')
+      .then(r => r.json())
+      .then(j => {
+        setInviteRequired(!!j.required)
+        setInviteVerified(!!j.verified)
+        setInviteChecked(true)
+        if (!j.required || j.verified) {
+          return fetchTemplates().then(t => { setTemplates(t); setLoading(false) })
+        }
+        setLoading(false)
+      })
+      .catch(e => { console.error('[invite status]', e); setInviteChecked(true); setLoading(false) })
   }, [])
+
+  const submitInvite = async () => {
+    if (!inviteCode.trim()) return
+    setInviteBusy(true)
+    setInviteError('')
+    try {
+      const r = await fetch('/api/invite/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: inviteCode.trim() }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
+      const t = await fetchTemplates(true)
+      setTemplates(t)
+      setInviteVerified(true)
+    } catch (e: any) {
+      setInviteError(String(e?.message ?? e))
+    } finally {
+      setInviteBusy(false)
+    }
+  }
 
   const list = filter === '全部' ? templates : templates.filter(t => t.category === filter)
 
@@ -30,6 +67,8 @@ export default function TemplatesPage() {
     }
     toggleTemplate(t)
   }
+
+  const blocked = inviteChecked && inviteRequired && !inviteVerified
 
   return (
     <>
@@ -115,6 +154,24 @@ export default function TemplatesPage() {
 
         <UploadPanel />
       </div>
+      {blocked && (
+        <div className="invite-overlay">
+          <div className="invite-modal">
+            <h3>请输入邀请码</h3>
+            <p>当前为测试阶段，仅限受邀用户使用。</p>
+            <input
+              value={inviteCode}
+              onChange={e => setInviteCode(e.target.value)}
+              placeholder="输入邀请码"
+              onKeyDown={e => { if (e.key === 'Enter') submitInvite() }}
+            />
+            {inviteError && <div className="invite-error">{inviteError}</div>}
+            <button className="admin-btn" disabled={inviteBusy || !inviteCode.trim()} onClick={submitInvite}>
+              {inviteBusy ? '验证中…' : '进入'}
+            </button>
+          </div>
+        </div>
+      )}
     </>
   )
 }

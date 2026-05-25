@@ -2,6 +2,7 @@
 // 路径：POST /api/generate
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { generate } from '../server/jimeng.js'
+import { requireInvite } from '../server/inviteAuth.js'
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
@@ -9,6 +10,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return
   }
   try {
+    const ok = await requireInvite(req, res)
+    if (!ok) return
     // Vercel 已自动解析 JSON body
     const input = typeof req.body === 'string' ? JSON.parse(req.body) : req.body
     const out = await generate(input)

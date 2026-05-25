@@ -1283,3 +1283,46 @@ button { font-family: inherit; cursor: pointer; }
   margin: 0;
   max-height: 360px; overflow-y: auto;
 }
+
+.invite-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  background: rgba(20, 16, 10, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.invite-modal {
+  width: min(460px, 100%);
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 28px;
+  box-shadow: var(--shadow);
+}
+.invite-modal h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-family: 'Cormorant Garamond', 'Noto Serif SC', serif;
+}
+.invite-modal p {
+  margin: 0 0 16px;
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.invite-modal input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+.invite-modal input:focus { outline: none; border-color: var(--gold); }
+.invite-error {
+  color: #b54040;
+  margin-bottom: 10px;
+  font-size: 12px;
+}

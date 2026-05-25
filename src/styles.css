@@ -1326,3 +1326,33 @@ button { font-family: inherit; cursor: pointer; }
   margin-bottom: 10px;
   font-size: 12px;
 }
+
+.admin-inline-input {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.admin-inline-input input { flex: 1; }
+.admin-code-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.admin-copy-btn {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  border-radius: 3px;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+}
+.admin-copy-btn:hover {
+  color: var(--gold-deep);
+  border-color: var(--gold);
+}

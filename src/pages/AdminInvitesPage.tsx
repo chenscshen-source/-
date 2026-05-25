@@ -15,12 +15,18 @@ export default function AdminInvitesPage() {
   const [rows, setRows] = useState<InviteRow[]>([])
   const [required, setRequired] = useState(true)
   const [loading, setLoading] = useState(true)
-  const [code, setCode] = useState('')
+  const makeCode = () => {
+    const t = Date.now().toString(36).toUpperCase().slice(-4)
+    const r = Math.random().toString(36).slice(2, 8).toUpperCase()
+    return `INV-${t}${r}`
+  }
+  const [code, setCode] = useState(makeCode())
   const [maxUses, setMaxUses] = useState(20)
   const [expiresAt, setExpiresAt] = useState('')
   const [note, setNote] = useState('')
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -41,30 +47,38 @@ export default function AdminInvitesPage() {
   useEffect(() => { load() }, [])
 
   const createOne = async () => {
-    if (!code.trim()) return
+    if (!code.trim() || creating) return
+    setCreating(true)
     setMsg('')
     setErr('')
-    const r = await fetch('/api/admin/invites', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        code: code.trim(),
-        max_uses: maxUses,
-        expires_at: expiresAt || null,
-        note: note || null,
-      }),
-    })
-    if (!r.ok) {
-      const text = await r.text()
-      setErr(`创建失败：${text}`)
-      return
+    try {
+      const r = await fetch('/api/admin/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: code.trim(),
+          max_uses: maxUses,
+          expires_at: expiresAt || null,
+          note: note || null,
+        }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok) {
+        const message = j?.error || `HTTP ${r.status}`
+        setErr(`创建失败：${message}`)
+        alert(`创建失败：${message}`)
+        return
+      }
+      setCode('')
+      setCode(makeCode())
+      setNote('')
+      setExpiresAt('')
+      setMaxUses(20)
+      setMsg('邀请码已创建')
+      await load()
+    } finally {
+      setCreating(false)
     }
-    setCode('')
-    setNote('')
-    setExpiresAt('')
-    setMaxUses(20)
-    setMsg('邀请码已创建')
-    await load()
   }
 
   const toggleRequired = async (next: boolean) => {
@@ -92,6 +106,16 @@ export default function AdminInvitesPage() {
     if (!confirm(`删除邀请码 ${row.code} ?`)) return
     await fetch(`/api/admin/invites/${row.id}`, { method: 'DELETE' })
     await load()
+  }
+
+  const copyCode = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text)
+      setMsg(`已复制：${text}`)
+      setTimeout(() => setMsg(''), 1500)
+    } catch {
+      setErr('复制失败，请手动复制')
+    }
   }
 
   return (
@@ -122,7 +146,12 @@ export default function AdminInvitesPage() {
         <div className="admin-grid-2">
           <label className="admin-field">
             <span>邀请码</span>
-            <input value={code} onChange={e => setCode(e.target.value)} placeholder="TEST2026A" />
+            <div className="admin-inline-input">
+              <input value={code} readOnly placeholder="随机邀请码" />
+              <button type="button" className="admin-btn admin-btn--ghost" onClick={() => setCode(makeCode())}>
+                换一个
+              </button>
+            </div>
           </label>
           <label className="admin-field">
             <span>可用次数</span>
@@ -137,7 +166,11 @@ export default function AdminInvitesPage() {
             <input value={note} onChange={e => setNote(e.target.value)} />
           </label>
         </div>
-        <button className="admin-btn" onClick={createOne}>创建</button>
+        <button className="admin-btn" disabled={creating || !code.trim()} onClick={createOne}>
+          {creating ? '创建中…' : '创建'}
+        </button>
+        {!!err && <div className="admin-hint" style={{ marginTop: 10, color: '#b54040' }}>{err}</div>}
+        {!!msg && <div className="admin-hint" style={{ marginTop: 10, color: 'var(--gold-deep)' }}>{msg}</div>}
       </section>
 
       <section className="admin-section">
@@ -153,7 +186,18 @@ export default function AdminInvitesPage() {
               {rows.map(row => (
                 <tr key={row.id} className={row.enabled ? '' : 'admin-row--off'}>
                   <td>
-                    <div className="admin-name">{row.code}</div>
+                    <div className="admin-code-row">
+                      <div className="admin-name">{row.code}</div>
+                      <button
+                        type="button"
+                        className="admin-copy-btn"
+                        title="复制邀请码"
+                        aria-label="复制邀请码"
+                        onClick={() => copyCode(row.code)}
+                      >
+                        ⧉
+                      </button>
+                    </div>
                     <div className="admin-sub">{row.note || ''}</div>
                   </td>
                   <td>{row.used_count} / {row.max_uses}</td>

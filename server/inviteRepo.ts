@@ -14,10 +14,14 @@ export interface InviteCodeRow {
 
 export async function isInviteRequired(): Promise<boolean> {
   const s = sql()
-  const rows = await s<{ value: boolean }[]>`
-    select value::text::boolean as value from settings where key = 'invite_required' limit 1
+  const rows = await s<{ value_text: string }[]>`
+    select trim(both '"' from value::text) as value_text
+    from settings
+    where key = 'invite_required'
+    limit 1
   `
-  return rows[0]?.value ?? true
+  const raw = (rows[0]?.value_text ?? 'true').toLowerCase()
+  return raw === 'true'
 }
 
 export async function setInviteRequired(enabled: boolean): Promise<void> {

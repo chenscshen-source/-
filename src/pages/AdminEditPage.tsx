@@ -29,6 +29,30 @@ const EMPTY: FormState = {
   weight: 0,
 }
 
+function classifyFromName(name: string): FormState['category'] {
+  const s = name.toLowerCase()
+  if (s.includes('中式') || s.includes('秀禾') || s.includes('汉服') || s.includes('旗袍')) return '中式'
+  if (s.includes('旅拍') || s.includes('海边') || s.includes('草地') || s.includes('外景')) return '旅拍'
+  if (s.includes('复古') || s.includes('油画') || s.includes('港风') || s.includes('胶片')) return '复古'
+  return '西式'
+}
+
+function styleFromCategory(category: FormState['category']): string {
+  if (category === '中式') return 'Oriental Elegance'
+  if (category === '旅拍') return 'Travel Romance'
+  if (category === '复古') return 'Vintage Story'
+  return 'Classic Light'
+}
+
+function makeSlug(name: string): string {
+  const normalized = name
+    .toLowerCase()
+    .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .replace(/-+/g, '-')
+  return normalized || `tpl-${Date.now().toString(36)}`
+}
+
 /** 浏览器端压到 1200 长边 + jpeg q85，再 base64，避免上传过大 */
 async function compressFile(file: File, maxDim = 1200, quality = 0.85): Promise<string> {
   const objURL = URL.createObjectURL(file)
@@ -80,7 +104,17 @@ export default function AdminEditPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    if (isNew) return
+    if (isNew) {
+      fetch('/api/admin/templates')
+        .then(r => r.json())
+        .then(j => {
+          const rows = (j.templates ?? []) as Array<{ weight?: number }>
+          const maxWeight = rows.reduce((n, row) => Math.max(n, Number(row.weight ?? 0)), 0)
+          setForm(f => ({ ...f, weight: maxWeight + 1 }))
+        })
+        .catch(() => {})
+      return
+    }
     fetch(`/api/admin/templates/${id}`)
       .then(r => r.json())
       .then(j => {
@@ -108,7 +142,16 @@ export default function AdminEditPage() {
     setCoverUploading(true)
     try {
       const url = await uploadFile(file, `cover-${Date.now()}.jpg`)
-      set('cover_url', url)
+      const basename = file.name.replace(/\.[^.]+$/, '')
+      const nextCategory = classifyFromName(basename)
+      setForm(f => ({
+        ...f,
+        cover_url: url,
+        name: f.name.trim() ? f.name : basename,
+        slug: f.slug.trim() ? f.slug : makeSlug(basename),
+        category: f.category === '西式' && !f.name.trim() ? nextCategory : f.category,
+        style_en: f.style_en.trim() ? f.style_en : styleFromCategory(nextCategory),
+      }))
     } catch (e: any) {
       alert('上传失败：' + e.message)
     } finally {

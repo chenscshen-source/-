@@ -13,20 +13,6 @@ interface AdminRow {
   assists: { url: string }[]
 }
 
-interface BatchDefaults {
-  category: string
-  style_en: string
-  prompt: string
-  enabled: boolean
-}
-
-const BATCH_DEFAULTS: BatchDefaults = {
-  category: '西式',
-  style_en: '',
-  prompt: '',
-  enabled: true,
-}
-
 async function compressFile(file: File, maxDim = 1200, quality = 0.85): Promise<string> {
   const objURL = URL.createObjectURL(file)
   try {
@@ -76,12 +62,38 @@ function slugifyFilename(filename: string): string {
   return normalized || `tpl-${Date.now()}`
 }
 
+function classifyFromName(name: string): string {
+  const s = name.toLowerCase()
+  if (s.includes('中式') || s.includes('秀禾') || s.includes('汉服') || s.includes('旗袍')) return '中式'
+  if (s.includes('旅拍') || s.includes('海边') || s.includes('草地') || s.includes('外景')) return '旅拍'
+  if (s.includes('复古') || s.includes('油画') || s.includes('港风') || s.includes('胶片')) return '复古'
+  return '西式'
+}
+
+function styleFromCategory(category: string): string {
+  if (category === '中式') return 'Oriental Elegance'
+  if (category === '旅拍') return 'Travel Romance'
+  if (category === '复古') return 'Vintage Story'
+  return 'Classic Light'
+}
+
+function inferTitle(filename: string, index: number): string {
+  const base = filename.replace(/\.[^.]+$/, '')
+  const cleaned = base
+    .replace(/^img[_-\s]?\d+$/i, '')
+    .replace(/^image[_-\s]?\d+$/i, '')
+    .replace(/^dsc[_-\s]?\d+$/i, '')
+    .replace(/^wechatimg[_-\s]?\d+$/i, '')
+    .replace(/[_-]+/g, ' ')
+    .trim()
+  return cleaned || `模版${index + 1}`
+}
+
 export default function AdminListPage() {
   const [rows, setRows] = useState<AdminRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [batchFiles, setBatchFiles] = useState<File[]>([])
-  const [batchDefaults, setBatchDefaults] = useState<BatchDefaults>(BATCH_DEFAULTS)
   const [batchUploading, setBatchUploading] = useState(false)
   const [batchDone, setBatchDone] = useState(0)
   const [batchTotal, setBatchTotal] = useState(0)
@@ -131,10 +143,6 @@ export default function AdminListPage() {
     }
   }
 
-  const setBatch = <K extends keyof BatchDefaults>(k: K, v: BatchDefaults[K]) => {
-    setBatchDefaults(s => ({ ...s, [k]: v }))
-  }
-
   const bulkCreate = async () => {
     if (batchFiles.length === 0) {
       alert('请先选择要批量上传的封面图')
@@ -150,18 +158,20 @@ export default function AdminListPage() {
       for (let i = 0; i < batchFiles.length; i++) {
         const file = batchFiles[i]
         try {
+          const title = inferTitle(file.name, i)
+          const category = classifyFromName(title)
           const coverUrl = await uploadFile(file, `cover-${stamp}-${i + 1}.jpg`)
           const safeSlug = `${slugifyFilename(file.name)}-${(stamp + i).toString(36)}`
           const payload = {
             slug: safeSlug,
-            name: file.name.replace(/\.[^.]+$/, ''),
-            style_en: batchDefaults.style_en || null,
-            category: batchDefaults.category || '西式',
+            name: title,
+            style_en: styleFromCategory(category),
+            category,
             description: '',
             cover_url: coverUrl,
-            prompt: batchDefaults.prompt,
+            prompt: '',
             assists: [],
-            enabled: batchDefaults.enabled,
+            enabled: true,
             weight: maxWeight + (batchFiles.length - i),
           }
           const r = await fetch('/api/admin/templates', {
@@ -214,41 +224,8 @@ export default function AdminListPage() {
       <section className="admin-section admin-batch">
         <h3 className="admin-section-title">批量上传模板</h3>
         <p className="admin-hint">
-          一次选择多张封面图，系统会自动按文件名创建模板。后续可再逐条补充 prompt、参考图等信息。
+          一次选择多张封面图即可。系统会自动识别并填好标题、分类、英文风格、Slug 与权重。
         </p>
-        <div className="admin-grid-2">
-          <label className="admin-field">
-            <span>默认分类</span>
-            <select
-              value={batchDefaults.category}
-              disabled={batchUploading}
-              onChange={e => setBatch('category', e.target.value)}
-            >
-              <option value="西式">西式</option>
-              <option value="中式">中式</option>
-              <option value="旅拍">旅拍</option>
-              <option value="复古">复古</option>
-            </select>
-          </label>
-          <label className="admin-field">
-            <span>默认英文风格（可空）</span>
-            <input
-              value={batchDefaults.style_en}
-              disabled={batchUploading}
-              onChange={e => setBatch('style_en', e.target.value)}
-              placeholder="Quiet Light"
-            />
-          </label>
-        </div>
-        <label className="admin-field">
-          <span>默认 Prompt（可空，后续可在编辑页补）</span>
-          <textarea
-            rows={4}
-            value={batchDefaults.prompt}
-            disabled={batchUploading}
-            onChange={e => setBatch('prompt', e.target.value)}
-          />
-        </label>
         <div className="admin-batch-actions">
           <label className="admin-btn admin-btn--ghost">
             选择封面图（可多选）
@@ -260,16 +237,6 @@ export default function AdminListPage() {
               disabled={batchUploading}
               onChange={e => setBatchFiles(Array.from(e.target.files ?? []))}
             />
-          </label>
-          <label className="admin-switch admin-switch--inline">
-            <input
-              type="checkbox"
-              checked={batchDefaults.enabled}
-              disabled={batchUploading}
-              onChange={e => setBatch('enabled', e.target.checked)}
-            />
-            <span />
-            <em>{batchDefaults.enabled ? '创建后自动上架' : '创建后先下架'}</em>
           </label>
           <button className="admin-btn" disabled={batchUploading || batchFiles.length === 0} onClick={bulkCreate}>
             {batchUploading ? `上传中 ${batchDone}/${batchTotal}` : `开始批量上传（${batchFiles.length}）`}

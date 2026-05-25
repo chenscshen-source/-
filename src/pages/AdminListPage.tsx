@@ -13,6 +13,14 @@ interface AdminRow {
   assists: { url: string }[]
 }
 
+interface FolderTemplateItem {
+  key: string
+  folderName: string
+  coverFile: File | null
+  promptFile: File | null
+  assistFiles: File[]
+}
+
 async function compressFile(file: File, maxDim = 1200, quality = 0.85): Promise<string> {
   const objURL = URL.createObjectURL(file)
   try {
@@ -89,11 +97,55 @@ function inferTitle(filename: string, index: number): string {
   return cleaned || `模版${index + 1}`
 }
 
+function isImageFile(name: string): boolean {
+  return /\.(png|jpe?g|webp|gif|bmp|heic|heif)$/i.test(name)
+}
+
+function isPromptFile(name: string): boolean {
+  return /\.(txt|md|markdown|json|text)$/i.test(name)
+}
+
+function classifyBucket(folderName: string): 'cover' | 'prompt' | 'assist' | null {
+  const n = folderName.toLowerCase()
+  if (n.includes('模版') || n.includes('模板') || n.includes('封面')) return 'cover'
+  if (n.includes('提示词') || n.includes('prompt')) return 'prompt'
+  if (n.includes('参考图') || n.includes('参考') || n.includes('assist')) return 'assist'
+  return null
+}
+
+function buildFolderTemplates(files: File[]): FolderTemplateItem[] {
+  const grouped = new Map<string, FolderTemplateItem>()
+  for (const file of files) {
+    const rel = (file as any).webkitRelativePath as string | undefined
+    if (!rel) continue
+    const parts = rel.split('/').filter(Boolean)
+    if (parts.length < 3) continue
+    const templateKey = parts.slice(0, -2).join('/')
+    const templateFolderName = parts[parts.length - 3]
+    const bucketFolderName = parts[parts.length - 2]
+    const bucket = classifyBucket(bucketFolderName)
+    if (!bucket) continue
+    const cur = grouped.get(templateKey) ?? {
+      key: templateKey,
+      folderName: templateFolderName,
+      coverFile: null,
+      promptFile: null,
+      assistFiles: [],
+    }
+    if (bucket === 'cover' && !cur.coverFile && isImageFile(file.name)) cur.coverFile = file
+    if (bucket === 'prompt' && !cur.promptFile && isPromptFile(file.name)) cur.promptFile = file
+    if (bucket === 'assist' && isImageFile(file.name)) cur.assistFiles.push(file)
+    grouped.set(templateKey, cur)
+  }
+  return Array.from(grouped.values()).filter(item => item.coverFile)
+}
+
 export default function AdminListPage() {
   const [rows, setRows] = useState<AdminRow[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [batchFiles, setBatchFiles] = useState<File[]>([])
+  const [batchItems, setBatchItems] = useState<FolderTemplateItem[]>([])
   const [batchUploading, setBatchUploading] = useState(false)
   const [batchDone, setBatchDone] = useState(0)
   const [batchTotal, setBatchTotal] = useState(0)
@@ -144,24 +196,31 @@ export default function AdminListPage() {
   }
 
   const bulkCreate = async () => {
-    if (batchFiles.length === 0) {
-      alert('请先选择要批量上传的封面图')
+    if (batchItems.length === 0) {
+      alert('请先选择包含“模版/提示词/参考图”的文件夹')
       return
     }
     setBatchUploading(true)
     setBatchDone(0)
-    setBatchTotal(batchFiles.length)
+    setBatchTotal(batchItems.length)
     try {
       const maxWeight = rows.reduce((n, r) => Math.max(n, r.weight ?? 0), 0)
       const stamp = Date.now()
       const errors: string[] = []
-      for (let i = 0; i < batchFiles.length; i++) {
-        const file = batchFiles[i]
+      for (let i = 0; i < batchItems.length; i++) {
+        const item = batchItems[i]
         try {
-          const title = inferTitle(file.name, i)
+          const title = inferTitle(item.folderName, i)
           const category = classifyFromName(title)
-          const coverUrl = await uploadFile(file, `cover-${stamp}-${i + 1}.jpg`)
-          const safeSlug = `${slugifyFilename(file.name)}-${(stamp + i).toString(36)}`
+          const coverFile = item.coverFile!
+          const coverUrl = await uploadFile(coverFile, `cover-${stamp}-${i + 1}.jpg`)
+          const assistUrls: { url: string }[] = []
+          for (let j = 0; j < item.assistFiles.length; j++) {
+            const assistUrl = await uploadFile(item.assistFiles[j], `assist-${stamp}-${i + 1}-${j + 1}.jpg`)
+            assistUrls.push({ url: assistUrl })
+          }
+          const safeSlug = `${slugifyFilename(item.folderName)}-${(stamp + i).toString(36)}`
+          const prompt = item.promptFile ? (await item.promptFile.text()).trim() : ''
           const payload = {
             slug: safeSlug,
             name: title,
@@ -169,10 +228,10 @@ export default function AdminListPage() {
             category,
             description: '',
             cover_url: coverUrl,
-            prompt: '',
-            assists: [],
+            prompt,
+            assists: assistUrls,
             enabled: true,
-            weight: maxWeight + (batchFiles.length - i),
+            weight: maxWeight + (batchItems.length - i),
           }
           const r = await fetch('/api/admin/templates', {
             method: 'POST',
@@ -181,17 +240,18 @@ export default function AdminListPage() {
           })
           if (!r.ok) throw new Error(`create ${r.status}`)
         } catch (e: any) {
-          errors.push(`${file.name}: ${String(e?.message ?? e)}`)
+          errors.push(`${item.folderName}: ${String(e?.message ?? e)}`)
         } finally {
           setBatchDone(i + 1)
         }
       }
       await load()
       setBatchFiles([])
+      setBatchItems([])
       if (errors.length) {
         alert(`批量上传完成，但有 ${errors.length} 项失败：\n${errors.slice(0, 5).join('\n')}`)
       } else {
-        alert(`批量上传成功，共创建 ${batchTotal || batchFiles.length} 个模板`)
+        alert(`批量上传成功，共创建 ${batchTotal || batchItems.length} 个模板`)
       }
     } finally {
       setBatchUploading(false)
@@ -224,28 +284,33 @@ export default function AdminListPage() {
       <section className="admin-section admin-batch">
         <h3 className="admin-section-title">批量上传模板</h3>
         <p className="admin-hint">
-          一次选择多张封面图即可。系统会自动识别并填好标题、分类、英文风格、Slug 与权重。
+          请选择包含多个模板文件夹的目录。每个模板文件夹需包含 3 个子文件夹：<code>模版</code>、<code>提示词</code>、<code>参考图</code>。系统会自动识别并创建新模板。
         </p>
         <div className="admin-batch-actions">
           <label className="admin-btn admin-btn--ghost">
-            选择封面图（可多选）
+            选择模板目录
             <input
               type="file"
-              accept="image/*"
               multiple
               hidden
               disabled={batchUploading}
-              onChange={e => setBatchFiles(Array.from(e.target.files ?? []))}
+              {...({ webkitdirectory: 'true', directory: 'true' } as any)}
+              onChange={e => {
+                const files = Array.from(e.target.files ?? [])
+                setBatchFiles(files)
+                setBatchItems(buildFolderTemplates(files))
+              }}
             />
           </label>
-          <button className="admin-btn" disabled={batchUploading || batchFiles.length === 0} onClick={bulkCreate}>
-            {batchUploading ? `上传中 ${batchDone}/${batchTotal}` : `开始批量上传（${batchFiles.length}）`}
+          <button className="admin-btn" disabled={batchUploading || batchItems.length === 0} onClick={bulkCreate}>
+            {batchUploading ? `上传中 ${batchDone}/${batchTotal}` : `开始批量上传（${batchItems.length}）`}
           </button>
         </div>
         {batchFiles.length > 0 && (
           <div className="admin-batch-files">
-            已选 {batchFiles.length} 张：{batchFiles.slice(0, 8).map(f => f.name).join('，')}
-            {batchFiles.length > 8 ? ` 等 ${batchFiles.length} 个文件` : ''}
+            已读取 {batchFiles.length} 个文件，识别到 {batchItems.length} 个模板文件夹
+            {batchItems.length > 0 ? `：${batchItems.slice(0, 6).map(item => item.folderName).join('，')}` : ''}
+            {batchItems.length > 6 ? ` 等 ${batchItems.length} 个` : ''}
           </div>
         )}
       </section>

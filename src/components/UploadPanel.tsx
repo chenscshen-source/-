@@ -34,14 +34,15 @@ export default function UploadPanel() {
   const [progress, setProgress] = useState<BatchProgress | null>(null)
 
   const hasTpl = selected.length > 0
-  const ready = hasTpl && !!groomFace && !!brideFace
+  const hasAnyFace = !!groomFace || !!brideFace
+  const ready = hasTpl && hasAnyFace
 
   const onGenerate = async () => {
     if (!ready) return
     setLoading(true)
     try {
       const results = await generateBatch(
-        selected, groomFace!, brideFace!,
+        selected, groomFace ?? '', brideFace ?? '',
         (p) => setProgress(p),
       )
       setResults(results)
@@ -96,7 +97,7 @@ export default function UploadPanel() {
       </button>
       <p className="side-hint">
         {!hasTpl ? '挑选至少一个模板' :
-          !groomFace || !brideFace ? '上传两张正脸照即可生成' :
+          !hasAnyFace ? '上传至少一张人像即可生成（支持单人）' :
           `预计 ${formatTotalEstimate(estimateTotalSeconds(selected.length))}，每个模板出 2 张`}
       </p>
 

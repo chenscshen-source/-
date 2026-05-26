@@ -41,19 +41,50 @@ export default function UploadPanel() {
     if (!ready) return
     setLoading(true)
     try {
-      const results = await generateBatch(
-        selected, groomFace ?? '', brideFace ?? '',
-        (p) => setProgress(p),
-      )
-      setResults(results)
-      navigate('/result')
+      while (true) {
+        try {
+          const results = await generateBatch(
+            selected, groomFace ?? '', brideFace ?? '',
+            (p) => setProgress(p),
+          )
+          setResults(results)
+          navigate('/result')
+          return
+        } catch (e: any) {
+          const msg = String(e?.message ?? e)
+          if (/INVITE_EXHAUSTED|邀请码次数已用完/i.test(msg)) {
+            alert('当前邀请码次数已用完，请输入新邀请码后继续。')
+            window.location.href = '/templates'
+            return
+          }
+          if (!/INVITE_REQUIRED/i.test(msg)) throw e
+          const code = window.prompt('请输入邀请码后继续生成：')?.trim()
+          if (!code) {
+            alert('未输入邀请码，已取消生成。')
+            return
+          }
+          const verify = await fetch('/api/invite/verify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code }),
+          })
+          const j = await verify.json().catch(() => ({}))
+          if (!verify.ok) {
+            alert(j.error || '邀请码无效，请重试')
+            continue
+          }
+          // 验证成功后继续 while，自动重试生成
+        }
+      }
     } catch (e: any) {
       console.error(e)
-      setLoading(false)
       const msg = String(e?.message ?? e)
       // 额度不足这种业务错原样透出
       if (/quota|余额|额度/i.test(msg)) alert('生成失败：' + msg)
       else alert('生成失败：' + msg.slice(0, 240))
+    } finally {
+      setLoading(false)
+      setProgress(null)
     }
   }
 

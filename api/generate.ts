@@ -26,7 +26,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         return
       }
       if (consumed === 'exhausted') {
-        res.status(403).json({ error: '邀请码次数已用完，请联系管理员获取新邀请码' })
+        res.setHeader('Set-Cookie', 'invite_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0')
+        res.status(403).json({ error: '邀请码次数已用完，请输入新邀请码继续', code: 'INVITE_EXHAUSTED' })
         return
       }
     }

@@ -27,8 +27,11 @@ import FaceSlot from './FaceSlot'
 type PeopleMode = 'single' | 'couple' | 'unknown'
 function inferPeopleModeByText(text: string): PeopleMode {
   const t = text.toLowerCase()
-  if (/双人|两人|情侣|夫妻|新郎新娘|合照|couple|wedding couple|bride and groom/.test(t)) return 'couple'
-  if (/单人|个人|肖像|solo|single portrait|新娘单人|新郎单人/.test(t)) return 'single'
+  const hasCouple =
+    /双人|两人|情侣|夫妻|合照|couple|wedding couple|bride and groom/.test(t) ||
+    (t.includes('新郎') && t.includes('新娘'))
+  if (hasCouple) return 'couple'
+  if (/单人|solo|single portrait|新娘单人|新郎单人|单人照/.test(t)) return 'single'
   return 'unknown'
 }
 

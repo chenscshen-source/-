@@ -9,8 +9,12 @@ import type { Template } from '../types'
 type PeopleMode = 'single' | 'couple' | 'unknown'
 function inferPeopleMode(t: Template): PeopleMode {
   const text = `${t.name} ${t.description} ${t.prompt}`.toLowerCase()
-  if (/双人|两人|情侣|夫妻|新郎新娘|合照|couple|wedding couple|bride and groom/.test(text)) return 'couple'
-  if (/单人|个人|肖像|solo|single portrait|新娘单人|新郎单人/.test(text)) return 'single'
+  const hasCouple =
+    /双人|两人|情侣|夫妻|合照|couple|wedding couple|bride and groom/.test(text) ||
+    (text.includes('新郎') && text.includes('新娘'))
+  if (hasCouple) return 'couple'
+  // 单人必须是明确标注，避免误判双人模板
+  if (/单人|solo|single portrait|新娘单人|新郎单人|单人照/.test(text)) return 'single'
   return 'unknown'
 }
 

@@ -81,6 +81,14 @@ button { font-family: inherit; cursor: pointer; }
 .nav { display: flex; align-items: center; gap: 32px; font-size: 13px; color: var(--ink-soft); letter-spacing: 0.15em; }
 .nav a { position: relative; padding: 4px 0; transition: color .2s; }
 .nav a:hover { color: var(--ink); }
+.build-tag {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--ink-mute);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+}
 .nav a::after {
   content: ''; position: absolute; left: 50%; bottom: 0;
   width: 0; height: 1px; background: var(--gold);

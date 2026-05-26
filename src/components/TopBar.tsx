@@ -1,5 +1,6 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { BUILD_TAG } from '../buildInfo'
 
 export default function TopBar() {
   const { pathname } = useLocation()
@@ -26,6 +27,7 @@ export default function TopBar() {
       <nav className="nav">
         <a href="#">教程</a>
         <a href="#">用户中心</a>
+        <span className="build-tag">{BUILD_TAG}</span>
         <div className="avatar">R</div>
       </nav>
     </header>

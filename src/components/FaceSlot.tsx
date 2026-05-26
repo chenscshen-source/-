@@ -63,6 +63,19 @@ export default function FaceSlot({
         onClick={() => ref.current?.click()}
       >
         {value ? <img src={value} alt={label} /> : <span className="plus">+</span>}
+        {value && !busy && (
+          <button
+            type="button"
+            className="face-remove"
+            aria-label={`删除${label}头像`}
+            onClick={(e) => {
+              e.stopPropagation()
+              onChange(null)
+            }}
+          >
+            ×
+          </button>
+        )}
         {value && <div className="replace">更换</div>}
         {busy && <div className="replace" style={{ opacity: 1 }}>处理中…</div>}
         <input

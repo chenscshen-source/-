@@ -1112,7 +1112,7 @@ button { font-family: inherit; cursor: pointer; }
   padding: 14px 16px; text-align: left;
   border-bottom: 1px solid var(--line-soft);
   font-size: 14px;
-  vertical-align: top;
+  vertical-align: middle;
 }
 .admin-table th {
   background: var(--bg-cream);
@@ -1131,13 +1131,18 @@ button { font-family: inherit; cursor: pointer; }
 }
 .admin-name { font-weight: 500; color: var(--ink); }
 .admin-sub { font-size: 11px; color: var(--ink-mute); margin-top: 2px; letter-spacing: 0.05em; }
-.admin-row-actions { display: flex; gap: 14px; align-items: flex-start; justify-content: flex-start; }
+.admin-row-actions {
+  white-space: nowrap;
+}
 .admin-row-actions a, .admin-row-actions button {
   background: none; border: none; cursor: pointer;
   color: var(--gold-deep); font-size: 13px;
   text-decoration: none; padding: 4px 0;
   font-family: 'Noto Serif SC', serif;
+  margin-right: 14px;
 }
+.admin-row-actions a:last-child,
+.admin-row-actions button:last-child { margin-right: 0; }
 .admin-row-actions a:hover, .admin-row-actions button:hover { color: var(--ink); }
 .admin-danger { color: #b54040 !important; }
 

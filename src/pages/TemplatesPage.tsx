@@ -3,20 +3,9 @@ import TopBar from '../components/TopBar'
 import UploadPanel from '../components/UploadPanel'
 import { categories } from '../data/templates'
 import { fetchTemplates } from '../services/templatesApi'
+import { inferTemplateMode, type PeopleMode } from '../services/templateMode'
 import { useFlow, MAX_TEMPLATES } from '../store'
 import type { Template } from '../types'
-
-type PeopleMode = 'single' | 'couple' | 'unknown'
-function inferPeopleMode(t: Template): PeopleMode {
-  const text = `${t.name} ${t.description} ${t.prompt}`.toLowerCase()
-  const hasCouple =
-    /双人|两人|情侣|夫妻|合照|couple|wedding couple|bride and groom/.test(text) ||
-    (text.includes('新郎') && text.includes('新娘'))
-  if (hasCouple) return 'couple'
-  // 单人必须是明确标注，避免误判双人模板
-  if (/单人|solo|single portrait|新娘单人|新郎单人|单人照/.test(text)) return 'single'
-  return 'unknown'
-}
 
 export default function TemplatesPage() {
   const [filter, setFilter] = useState<(typeof categories)[number]>('全部')
@@ -28,6 +17,7 @@ export default function TemplatesPage() {
   const [inviteCode, setInviteCode] = useState('')
   const [inviteBusy, setInviteBusy] = useState(false)
   const [inviteError, setInviteError] = useState('')
+  const [modeMap, setModeMap] = useState<Record<string, PeopleMode>>({})
   const { selected, toggleTemplate } = useFlow()
   const isSelected = (id: string) => selected.some(t => t.id === id)
   const atLimit = selected.length >= MAX_TEMPLATES
@@ -40,7 +30,12 @@ export default function TemplatesPage() {
         setInviteVerified(!!j.verified)
         setInviteChecked(true)
         if (!j.required || j.verified) {
-          return fetchTemplates().then(t => { setTemplates(t); setLoading(false) })
+          return fetchTemplates().then(async t => {
+            setTemplates(t)
+            setLoading(false)
+            const pairs = await Promise.all(t.map(async (tpl) => [tpl.id, await inferTemplateMode(tpl)] as const))
+            setModeMap(Object.fromEntries(pairs))
+          })
         }
         setLoading(false)
       })
@@ -61,6 +56,8 @@ export default function TemplatesPage() {
       if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
       const t = await fetchTemplates(true)
       setTemplates(t)
+      const pairs = await Promise.all(t.map(async (tpl) => [tpl.id, await inferTemplateMode(tpl)] as const))
+      setModeMap(Object.fromEntries(pairs))
       setInviteVerified(true)
     } catch (e: any) {
       setInviteError(String(e?.message ?? e))
@@ -72,9 +69,9 @@ export default function TemplatesPage() {
   const list = filter === '全部' ? templates : templates.filter(t => t.category === filter)
 
   const pick = (t: Template) => {
-    const nextMode = inferPeopleMode(t)
+    const nextMode = modeMap[t.id] ?? 'unknown'
     const selectedModes = selected
-      .map(inferPeopleMode)
+      .map(item => modeMap[item.id] ?? 'unknown')
       .filter((m): m is Exclude<PeopleMode, 'unknown'> => m !== 'unknown')
     const currentMode = selectedModes[0]
     if (currentMode && nextMode !== 'unknown' && currentMode !== nextMode && !isSelected(t.id)) {

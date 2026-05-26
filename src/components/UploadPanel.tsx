@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useFlow, MAX_TEMPLATES } from '../store'
 import { generateBatch, estimateTotalSeconds, type BatchProgress } from '../services/generation'
+import { inferTemplateMode, type PeopleMode } from '../services/templateMode'
 
 /** 把秒数格式化成"约 X 分 Y 秒"；为减少跳动，5 秒一档对齐 */
 function formatEta(s: number): string {
@@ -24,17 +25,6 @@ function formatTotalEstimate(s: number): string {
 }
 import FaceSlot from './FaceSlot'
 
-type PeopleMode = 'single' | 'couple' | 'unknown'
-function inferPeopleModeByText(text: string): PeopleMode {
-  const t = text.toLowerCase()
-  const hasCouple =
-    /双人|两人|情侣|夫妻|合照|couple|wedding couple|bride and groom/.test(t) ||
-    (t.includes('新郎') && t.includes('新娘'))
-  if (hasCouple) return 'couple'
-  if (/单人|solo|single portrait|新娘单人|新郎单人|单人照/.test(t)) return 'single'
-  return 'unknown'
-}
-
 export default function UploadPanel() {
   const {
     selected, groomFace, brideFace,
@@ -43,13 +33,25 @@ export default function UploadPanel() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [progress, setProgress] = useState<BatchProgress | null>(null)
+  const [selectedMode, setSelectedMode] = useState<PeopleMode>('unknown')
 
   const hasTpl = selected.length > 0
-  const selectedMode = selected
-    .map(t => inferPeopleModeByText(`${t.name} ${t.description} ${t.prompt}`))
-    .find(m => m !== 'unknown') ?? 'unknown'
   const hasAnyFace = !!groomFace || !!brideFace
   const ready = hasTpl && hasAnyFace
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      if (!selected.length) {
+        setSelectedMode('unknown')
+        return
+      }
+      const modes = await Promise.all(selected.map(inferTemplateMode))
+      const mode = modes.find(m => m !== 'unknown') ?? 'unknown'
+      if (!cancelled) setSelectedMode(mode)
+    })()
+    return () => { cancelled = true }
+  }, [selected])
 
   useEffect(() => {
     if (selectedMode === 'single' && groomFace && brideFace) {

@@ -532,7 +532,7 @@ button { font-family: inherit; cursor: pointer; }
   opacity: 0;
   transition: opacity .2s ease, background .2s ease;
   cursor: pointer;
-  z-index: 2;
+  z-index: 5;
 }
 .face-circle:hover .face-remove { opacity: 1; }
 .face-remove:hover { background: rgba(181,64,64,0.92); }
@@ -541,6 +541,8 @@ button { font-family: inherit; cursor: pointer; }
   position: absolute; inset: 0; background: rgba(43,35,29,0.55); color: #fff;
   display: flex; align-items: center; justify-content: center;
   opacity: 0; transition: opacity 0.2s; font-size: 13px; letter-spacing: 0.2em;
+  z-index: 1;
+  pointer-events: none;
 }
 .face-circle:hover .replace { opacity: 1; }
 .face-label { margin-top: 14px; font-size: 13px; letter-spacing: 0.3em; color: var(--ink-soft); }

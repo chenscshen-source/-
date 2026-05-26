@@ -7,6 +7,7 @@ import { useState } from 'react'
 export default function ResultPage() {
   const { selected, groomFace, brideFace, results, setResults } = useFlow()
   const [regen, setRegen] = useState(false)
+  const [regenOne, setRegenOne] = useState<Record<string, boolean>>({})
   const navigate = useNavigate()
 
   if (results.length === 0) {
@@ -23,11 +24,28 @@ export default function ResultPage() {
   }
 
   const regenerate = async () => {
-    if (!groomFace || !brideFace || selected.length === 0) return
+    if ((!groomFace && !brideFace) || selected.length === 0) return
     setRegen(true)
-    const r = await generateBatch(selected, groomFace, brideFace)
-    setResults(r)
-    setRegen(false)
+    try {
+      const r = await generateBatch(selected, groomFace ?? '', brideFace ?? '')
+      setResults(r)
+    } finally {
+      setRegen(false)
+    }
+  }
+
+  const regenerateOne = async (templateId: string) => {
+    if (!results.length || (!groomFace && !brideFace)) return
+    const group = results.find(g => g.template.id === templateId)
+    if (!group) return
+    setRegenOne(prev => ({ ...prev, [templateId]: true }))
+    try {
+      const r = await generateBatch([group.template], groomFace ?? '', brideFace ?? '')
+      const next = results.map(g => g.template.id === templateId ? r[0] : g)
+      setResults(next)
+    } finally {
+      setRegenOne(prev => ({ ...prev, [templateId]: false }))
+    }
   }
 
   return (
@@ -59,7 +77,16 @@ export default function ResultPage() {
                 <h2>{group.template.name}</h2>
                 <span className="style">{group.template.styleEn}</span>
               </div>
-              <Link to="/templates" className="btn-ghost">换 一 帧</Link>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button
+                  className="btn-ghost"
+                  onClick={() => regenerateOne(group.template.id)}
+                  disabled={!!regenOne[group.template.id]}
+                >
+                  {regenOne[group.template.id] ? '重生成中…' : '重 新 生 成 本 模 板'}
+                </button>
+                <Link to="/templates" className="btn-ghost">换 一 帧</Link>
+              </div>
             </div>
             <div className="result-grid">
               {group.images.map((src, i) => (

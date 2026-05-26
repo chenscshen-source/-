@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useFlow, MAX_TEMPLATES } from '../store'
@@ -24,6 +24,14 @@ function formatTotalEstimate(s: number): string {
 }
 import FaceSlot from './FaceSlot'
 
+type PeopleMode = 'single' | 'couple' | 'unknown'
+function inferPeopleModeByText(text: string): PeopleMode {
+  const t = text.toLowerCase()
+  if (/双人|两人|情侣|夫妻|新郎新娘|合照|couple|wedding couple|bride and groom/.test(t)) return 'couple'
+  if (/单人|个人|肖像|solo|single portrait|新娘单人|新郎单人/.test(t)) return 'single'
+  return 'unknown'
+}
+
 export default function UploadPanel() {
   const {
     selected, groomFace, brideFace,
@@ -34,8 +42,33 @@ export default function UploadPanel() {
   const [progress, setProgress] = useState<BatchProgress | null>(null)
 
   const hasTpl = selected.length > 0
+  const selectedMode = selected
+    .map(t => inferPeopleModeByText(`${t.name} ${t.description} ${t.prompt}`))
+    .find(m => m !== 'unknown') ?? 'unknown'
   const hasAnyFace = !!groomFace || !!brideFace
   const ready = hasTpl && hasAnyFace
+
+  useEffect(() => {
+    if (selectedMode === 'single' && groomFace && brideFace) {
+      setBrideFace(null)
+      alert('当前为单人模板，仅保留一张人像。')
+    }
+  }, [selectedMode])
+
+  const onSetGroom = (d: string | null) => {
+    if (d && selectedMode === 'single' && brideFace) {
+      alert('当前选择的是单人模板，只能上传一张人像。')
+      return
+    }
+    setGroomFace(d)
+  }
+  const onSetBride = (d: string | null) => {
+    if (d && selectedMode === 'single' && groomFace) {
+      alert('当前选择的是单人模板，只能上传一张人像。')
+      return
+    }
+    setBrideFace(d)
+  }
 
   const onGenerate = async () => {
     if (!ready) return
@@ -119,8 +152,8 @@ export default function UploadPanel() {
       </div>
 
       <div className="face-row">
-        <FaceSlot label="新郎" value={groomFace} onChange={setGroomFace} />
-        <FaceSlot label="新娘" value={brideFace} onChange={setBrideFace} />
+        <FaceSlot label="新郎" value={groomFace} onChange={onSetGroom} />
+        <FaceSlot label="新娘" value={brideFace} onChange={onSetBride} />
       </div>
 
       <button className="btn-primary" disabled={!ready} onClick={onGenerate}>
@@ -128,7 +161,8 @@ export default function UploadPanel() {
       </button>
       <p className="side-hint">
         {!hasTpl ? '挑选至少一个模板' :
-          !hasAnyFace ? '上传至少一张人像即可生成（支持单人）' :
+          !hasAnyFace ? (selectedMode === 'single' ? '单人模板：上传一张人像即可生成' : '上传至少一张人像即可生成') :
+          selectedMode === 'single' ? '单人模板：仅允许一张人像' :
           `预计 ${formatTotalEstimate(estimateTotalSeconds(selected.length))}，每个模板出 2 张`}
       </p>
 

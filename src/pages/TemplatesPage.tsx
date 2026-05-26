@@ -6,6 +6,14 @@ import { fetchTemplates } from '../services/templatesApi'
 import { useFlow, MAX_TEMPLATES } from '../store'
 import type { Template } from '../types'
 
+type PeopleMode = 'single' | 'couple' | 'unknown'
+function inferPeopleMode(t: Template): PeopleMode {
+  const text = `${t.name} ${t.description} ${t.prompt}`.toLowerCase()
+  if (/双人|两人|情侣|夫妻|新郎新娘|合照|couple|wedding couple|bride and groom/.test(text)) return 'couple'
+  if (/单人|个人|肖像|solo|single portrait|新娘单人|新郎单人/.test(text)) return 'single'
+  return 'unknown'
+}
+
 export default function TemplatesPage() {
   const [filter, setFilter] = useState<(typeof categories)[number]>('全部')
   const [templates, setTemplates] = useState<Template[]>([])
@@ -60,6 +68,15 @@ export default function TemplatesPage() {
   const list = filter === '全部' ? templates : templates.filter(t => t.category === filter)
 
   const pick = (t: Template) => {
+    const nextMode = inferPeopleMode(t)
+    const selectedModes = selected
+      .map(inferPeopleMode)
+      .filter((m): m is Exclude<PeopleMode, 'unknown'> => m !== 'unknown')
+    const currentMode = selectedModes[0]
+    if (currentMode && nextMode !== 'unknown' && currentMode !== nextMode && !isSelected(t.id)) {
+      alert(`当前已选择${currentMode === 'single' ? '单人' : '双人'}模板，不能混选${nextMode === 'single' ? '单人' : '双人'}模板`)
+      return
+    }
     // 已选满且这张不是已选的 → 提示一下
     if (atLimit && !isSelected(t.id)) {
       alert(`最多选 ${MAX_TEMPLATES} 个模板`)

@@ -29,54 +29,23 @@ const stages = [
 /** 单模板预估耗时（秒）。4K + 2 张并发的 seedream 实测约 1.5 分钟。 */
 const PER_TEMPLATE_SECONDS = 90
 
-type PeopleMode = 'single' | 'couple'
-
-function inferPeopleMode(tpl: Template): PeopleMode {
-  const text = `${tpl.name} ${tpl.description} ${tpl.prompt}`.toLowerCase()
-  if (/双人|两人|情侣|夫妻|新郎新娘|合照|couple|bride and groom/.test(text)) return 'couple'
-  if (/单人|个人|肖像|solo|single portrait|新娘单人|新郎单人/.test(text)) return 'single'
-  // 默认按双人处理，避免双人场景漏人
-  return 'couple'
-}
-
-function inferSingleTarget(tpl: Template): 'groom' | 'bride' {
-  const text = `${tpl.name} ${tpl.description} ${tpl.prompt}`.toLowerCase()
-  if (/新郎|男士|groom|male|man/.test(text)) return 'groom'
-  return 'bride'
-}
-
 async function generateOne(
   tpl: Template,
   groomFace: string,
   brideFace: string,
 ): Promise<string[]> {
-  const mode = inferPeopleMode(tpl)
-  let groom = groomFace || ''
-  let bride = brideFace || ''
-
-  if (mode === 'single') {
-    const target = inferSingleTarget(tpl)
-    if (target === 'groom') {
-      groom = groomFace || brideFace || ''
-      bride = ''
-    } else {
-      bride = brideFace || groomFace || ''
-      groom = ''
-    }
-  }
-
   const abs = (u: string) => new URL(u, window.location.origin).toString()
   const body = JSON.stringify({
     prompt: tpl.prompt,
     assists: (tpl.assists ?? []).map(abs),
-    groomFace: groom,
-    brideFace: bride,
+    groomFace,
+    brideFace,
     n: 2,
   })
   console.log('[generate] body=%s KB (groom=%s KB, bride=%s KB)',
     Math.round(body.length / 1024),
-    Math.round(groom.length / 1024),
-    Math.round(bride.length / 1024))
+    Math.round(groomFace.length / 1024),
+    Math.round(brideFace.length / 1024))
   const res = await fetch('/api/generate', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

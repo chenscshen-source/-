@@ -57,12 +57,16 @@ export default function FaceSlot({
   }
   return (
     <div className="face-slot">
-      <div
-        className="face-circle"
-        style={{ width: size, height: size }}
-        onClick={() => ref.current?.click()}
-      >
-        {value ? <img src={value} alt={label} /> : <span className="plus">+</span>}
+      <div className="face-circle-wrap" style={{ width: size, height: size }}>
+        <div
+          className="face-circle"
+          style={{ width: size, height: size }}
+          onClick={() => ref.current?.click()}
+        >
+          {value ? <img src={value} alt={label} /> : <span className="plus">+</span>}
+          {value && <div className="replace">更换</div>}
+          {busy && <div className="replace" style={{ opacity: 1 }}>处理中…</div>}
+        </div>
         {value && !busy && (
           <button
             type="button"
@@ -76,8 +80,6 @@ export default function FaceSlot({
             ×
           </button>
         )}
-        {value && <div className="replace">更换</div>}
-        {busy && <div className="replace" style={{ opacity: 1 }}>处理中…</div>}
         <input
           ref={ref} type="file" accept="image/*" hidden
           onChange={(e) => onFile(e.target.files?.[0])}
